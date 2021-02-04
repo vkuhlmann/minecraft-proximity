@@ -7,6 +7,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Serilog;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 
 // Use and distribution of this program requires compliance with https://dotnet.microsoft.com/en/dotnet_library_license.htm
 // As per necessary by some dependencies.
@@ -17,6 +18,7 @@ namespace discordGame
 	{
 		public static Discord.Discord discord;
 		public static Discord.LobbyManager lobbyManager;
+		public static ConcurrentQueue<Func<Task>> nextTasks;
 
 		// Based on Discord Game DSK example:
 		// discord_game_sdk.zip/examples/csharp/Program.cs
@@ -82,14 +84,57 @@ namespace discordGame
 			});
 		}
 
+		//async static Task myFunction()
+		//{
+		//	Console.WriteLine("---- I");
+		//	await Task.Delay(2000);
+		//	//Thread.Sleep(10000);
+
+		//	Console.WriteLine("---- II");
+		//	await Task.CompletedTask;
+		//}
+
+		static VoiceLobby currentLobby = null;
+		static bool createLobby = true;
+
+		static async Task createLobbyIfNone()
+		{
+			if (!createLobby || currentLobby != null)
+			{
+				Log.Information("Not creating lobby: already exists");
+				return;
+			}
+
+			//currentLobby = VoiceLobby.Create().Result;
+			currentLobby = await VoiceLobby.Create();
+			Log.Information("Lobby has been created");
+		}
+
 		static async Task RunAsync(string[] args)
 		{
+			nextTasks = new ConcurrentQueue<Func<Task>>();
 			var clientID = "804643036755001365";
 
 			Console.Write("DISCORD_INSTANCE_ID: ");
 			string instanceID = Console.ReadLine();
 
 			Environment.SetEnvironmentVariable("DISCORD_INSTANCE_ID", instanceID);
+
+			//Task a = Task.Run(async () =>
+			//{
+			//	Console.WriteLine("---- Start");
+			//	await myFunction();
+
+			//	//Thread.Sleep(10000);
+			//	Console.WriteLine("---- Stop");
+			//	await Task.CompletedTask;
+			//});
+			//await a;
+
+			//Task a = myFunction();
+			//Console.WriteLine("---- A");
+			//Thread.Sleep(2000);
+			//Console.WriteLine("---- B");
 
 			Discord.Discord discord;
 			try
@@ -116,20 +161,22 @@ namespace discordGame
 			var activityManager = discord.GetActivityManager();
 			var lobbyManager = discord.GetLobbyManager();
 			Program.lobbyManager = lobbyManager;
-			VoiceLobby currentLobby = null;
-			bool createLobby = true;
+		
 
 			// Received when someone accepts a request to join or invite.
 			// Use secrets to receive back the information needed to add the user to the group/party/match
-			activityManager.OnActivityJoin += async secret =>
+			activityManager.OnActivityJoin += secret =>
 			{
-				createLobby = false;
-				if (currentLobby != null)
-					await currentLobby.Disconnect();
-				//await currentLobby?.Disconnect();
+				nextTasks.Enqueue(async () =>
+				{
+					createLobby = false;
+					if (currentLobby != null)
+						await currentLobby.Disconnect();
+					//await currentLobby?.Disconnect();
 
-				//Log.Information($"Joining activity {secret}");
-				currentLobby = await VoiceLobby.FromSecret(secret);
+					//Log.Information($"Joining activity {secret}");
+					currentLobby = await VoiceLobby.FromSecret(secret);
+				});
 
 				//lobbyManager.ConnectLobbyWithActivitySecret(secret, (Discord.Result result, ref Discord.Lobby lobby) =>
 				//{
@@ -196,10 +243,10 @@ namespace discordGame
 				Log.Information("Received lobby speaking: {0} {1} {2}", lobbyID, userID, speaking);
 			};
 
-			List<(int, Action)> scheduledTasks = new List<(int, Action)>();
-
-			scheduledTasks.Add((10,
-				() =>
+			List<(int, Func<Task>)> scheduledTasks = new List<(int, Func<Task>)>
+			{
+				(2,//180,
+				async () =>
 				{
 					if (!createLobby || currentLobby != null)
 					{
@@ -207,10 +254,17 @@ namespace discordGame
 						return;
 					}
 
-					currentLobby = VoiceLobby.Create().Result;
-					Log.Information("Lobby has been created");
+					Log.Information("Creating new lobby");
+
+					//currentLobby = VoiceLobby.Create().Result;
+					currentLobby = await VoiceLobby.Create();
+					//Log.Information("Lobby has been created");
+					//Log.Information("Blocking for 10 seconds");
+					//Thread.Sleep(10000);
+					//Log.Information("Done blocking");
 				}
-			));
+				)
+			};
 
 			//Task a = Task.Run(() =>
 			//{
@@ -248,13 +302,17 @@ namespace discordGame
 
 			List<Task> runningTasks = new List<Task>();
 
+			Log.Information("Running callback loop on {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
+
 			// Pump the event look to ensure all callbacks continue to get fired.
 			try
 			{
 				Console.WriteLine("Running. Press Q to quit.");
+				int frame = 0;
 
 				while (true)
 				{
+					frame += 1;
 					int i = 0;
 					while (i < scheduledTasks.Count)
 					{
@@ -264,8 +322,17 @@ namespace discordGame
 							continue;
 						}
 
-						runningTasks.Add(Task.Run(scheduledTasks[i].Item2));
+						Task a = scheduledTasks[i].Item2(); //new Task(scheduledTasks[i].Item2);
+						runningTasks.Add(a);
+						//a.RunSynchronously();
+						
 						scheduledTasks.RemoveAt(i);
+					}
+
+					if (nextTasks.TryDequeue(out Func<Task> b))
+					{
+						Task c = b();
+						runningTasks.Add(c);
 					}
 
 					discord.RunCallbacks();
@@ -282,6 +349,8 @@ namespace discordGame
 					}
 
 					await Task.Delay(1000 / 60);
+					if ((frame % 60) == 0)
+						Log.Information("Ping!");
 				}
 
 				//a.Wait();
@@ -290,17 +359,30 @@ namespace discordGame
 			{
 				discord.Dispose();
 			}
+
+			//await a;
 		}
 
 		static async Task Main(string[] args)
 		{
-			Log.Logger = new LoggerConfiguration()
-				.MinimumLevel.Information()
-				.WriteTo.Console()
-				.CreateLogger();
+			try
+			{
+				Log.Logger = new LoggerConfiguration()
+					.MinimumLevel.Information()
+					.WriteTo.Console()
+					.CreateLogger();
 
-			await RunAsync(args);
-			Log.CloseAndFlush();
+				await RunAsync(args);
+				Log.CloseAndFlush();
+			}catch (Exception ex)
+			{
+				Console.WriteLine("Fatal error:");
+				Console.WriteLine(ex);
+				Console.WriteLine(ex.StackTrace);
+				Console.WriteLine();
+				Console.WriteLine("Press any key to quit");
+				Console.ReadKey();
+			}
 		}
 	}
 }

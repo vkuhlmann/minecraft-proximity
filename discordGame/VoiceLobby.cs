@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using Serilog;
+using System.Threading;
 
 namespace discordGame
 {
@@ -18,16 +19,21 @@ namespace discordGame
 		public event Discord.LobbyManager.MemberConnectHandler onMemberConnect;
 		public event Discord.LobbyManager.MemberDisconnectHandler onMemberDisconnect;
 
+		public Task currentTask;
+		public Discord.LobbyManager.ConnectVoiceHandler connVoiceHandler;
+
 		VoiceLobby(Discord.Lobby lobby)
 		{
 			this.lobby = lobby;
 			lobbyManager = Program.lobbyManager;
+			currentTask = Task.CompletedTask;
 
 			DoInit();
 		}
 
 		public static async Task<VoiceLobby> FromSecret(string secret)
 		{
+			Log.Information("From secret on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
 			//Console.WriteLine("OnJoin {0}", secret);
 			Discord.LobbyManager lobbyManager = Program.lobbyManager;
 
@@ -47,6 +53,7 @@ namespace discordGame
 
 		public static async Task<VoiceLobby> Create()
 		{
+			Log.Information("Creating on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
 			Discord.LobbyManager lobbyManager = Program.lobbyManager;
 
 			// Create a lobby.
@@ -76,32 +83,60 @@ namespace discordGame
 			return new VoiceLobby(lobby.Value);
 		}
 
-		public async Task<bool> Disconnect()
+		public async Task Disconnect()
 		{
-			TaskCompletionSource<bool> completionSource = new TaskCompletionSource<bool>();
-			lobbyManager.DisconnectLobby(lobby.Id, (Discord.Result result) =>
+			Log.Information("Disconnecting on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
+			Log.Information("Disconnecting from lobby {LobbyId}", lobby.Id);
+			Task a = currentTask.ContinueWith((prev) =>
 			{
-				completionSource.SetResult(result == Discord.Result.Ok);
+				Program.nextTasks.Enqueue(async () =>
+				{
+					TaskCompletionSource<bool> completionSource = new TaskCompletionSource<bool>();
+					lobbyManager.DisconnectLobby(lobby.Id, (Discord.Result result) =>
+					{
+						completionSource.SetResult(result == Discord.Result.Ok);
+					});
+					await completionSource.Task;
+					//return true;
+				});
+				//return true;
 			});
-			return await completionSource.Task;
+			
+			currentTask = a;
+			await a;
 		}
 
 		void DoInit()
 		{
+			Log.Information("Doing init on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
+
+			connVoiceHandler = (res) =>
+			{
+				//Console.WriteLine($"Connected to voice chat! Result was: {_}");
+				Log.Information("Connected to voice chat! Result was {Result}. (Lobby {LobbyId})", res, lobby.Id);
+			};
+
+			//// Connect to voice chat.
+			//lobbyManager.ConnectVoice(lobby.Id, (res) =>
+			//{
+			//	//Console.WriteLine($"Connected to voice chat! Result was: {_}");
+			//	Log.Information("Connected to voice chat! Result was {Result}. (Lobby {LobbyId})", res, lobby.Id);
+			//});
+
 			// Connect to voice chat.
-			lobbyManager.ConnectVoice(lobby.Id, (_) =>
-			{
-				Console.WriteLine($"Connected to voice chat! Result was: {_}");
-			});
+			lobbyManager.ConnectVoice(lobby.Id, connVoiceHandler);
 
+			Log.Information("Connecting to network. (Lobby {LobbyId})", lobby.Id);
 			lobbyManager.ConnectNetwork(lobby.Id);
-			lobbyManager.OpenNetworkChannel(lobby.Id, 0, true);
+			//Log.Information("Opening channel. (Lobby {LobbyId})", lobby.Id);
+			//lobbyManager.OpenNetworkChannel(lobby.Id, 0, true);
+			//Log.Information("Opened channel. (Lobby {LobbyId})", lobby.Id);
 
-			foreach (var user in lobbyManager.GetMemberUsers(lobby.Id))
-			{
-				lobbyManager.SendNetworkMessage(lobby.Id, user.Id, 0,
-					Encoding.UTF8.GetBytes($"Hello, {user.Username}!"));
-			}
+			//foreach (var user in lobbyManager.GetMemberUsers(lobby.Id))
+			//{
+			//	lobbyManager.SendNetworkMessage(lobby.Id, user.Id, 0,
+			//		Encoding.UTF8.GetBytes($"Hello, {user.Username}!"));
+			//}
 
 			lobbyManager.OnLobbyMessage += (lobbyID, userID, data) =>
 			{
@@ -147,19 +182,24 @@ namespace discordGame
 			//UpdateActivity(discord, lobby);
 		}
 
-		private async void HandleOnMemberConnect(long lobbyId, long userId)
+		private void HandleOnMemberConnect(long lobbyId, long userId)
 		{
-			//Log.Information("User {0} ({1}) has connected to the lobby! (Lobby {2})", await GetFriendlyUsername(userId), userId, lobby.Id);
-			Log.Information("User {UserFriendlyName} ({UserId}) has connected to the lobby! (Lobby {LobbyId})", await GetFriendlyUsername(userId), userId, lobbyId);
-
+			Program.nextTasks.Enqueue(async () =>
+			{
+				//Log.Information("User {0} ({1}) has connected to the lobby! (Lobby {2})", await GetFriendlyUsername(userId), userId, lobby.Id);
+				Log.Information("User {UserFriendlyName} ({UserId}) has connected to the lobby! (Lobby {LobbyId})", await GetFriendlyUsername(userId), userId, lobbyId);
+			});
 			//Console.WriteLine($"Lobby {this.lobby.Id}: Connect from {userId} ({await GetFriendlyUsername(userId)})");
 		}
 
-		private async void HandleOnMemberDisconnect(long lobbyId, long userId)
+		private void HandleOnMemberDisconnect(long lobbyId, long userId)
 		{
-			//Log.Information("User {0} ({1}) has disconnected from the lobby! (Lobby {2})", await GetFriendlyUsername(userId), userId, lobby.Id);
-			Log.Information("User {UserFriendlyName} ({UserId}) has disconnected from the lobby. (Lobby {LobbyId})", await GetFriendlyUsername(userId), userId, lobbyId);
+			Program.nextTasks.Enqueue(async () =>
+			{
+				//Log.Information("User {0} ({1}) has disconnected from the lobby! (Lobby {2})", await GetFriendlyUsername(userId), userId, lobby.Id);
+				Log.Information("User {UserFriendlyName} ({UserId}) has disconnected from the lobby. (Lobby {LobbyId})", await GetFriendlyUsername(userId), userId, lobbyId);
 
+			});
 			//Console.WriteLine($"Lobby {this.lobby.Id}: Disconnect from {userId} ({await GetFriendlyUsername(userId)})");
 		}
 
@@ -233,6 +273,11 @@ namespace discordGame
 
 		public async Task<string> GetFriendlyUsername(long playerId)
 		{
+			Log.Information("Getting Friendly Username on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
+			Log.Information("Blocking for 5 seconds");
+			Thread.Sleep(5000);
+			Log.Information("Done blocking");
+
 			UserResult res = await UserResult.GetUser(playerId);
 			if (res.result == Discord.Result.Ok)
 			{
@@ -258,11 +303,14 @@ namespace discordGame
 		{
 			Discord.LobbyMemberTransaction memberTransaction = lobbyManager.GetMemberUpdateTransaction(lobby.Id, playerId);
 			memberTransaction.SetMetadata("isDead", $"{isDead}");
-			lobbyManager.UpdateMember(lobby.Id, playerId, memberTransaction, async (result) =>
+			lobbyManager.UpdateMember(lobby.Id, playerId, memberTransaction, (result) =>
 			{
-				//Console.WriteLine("lobby member has been updated: {0}", lobbyManager.GetMemberMetadataValue(lobbyID, userID, "hello"));
-				string playerName = await GetFriendlyUsername(playerId);
-				Console.WriteLine($"Set {playerId} dead status to ${isDead}");
+				Program.nextTasks.Enqueue(async () =>
+				{
+					//Console.WriteLine("lobby member has been updated: {0}", lobbyManager.GetMemberMetadataValue(lobbyID, userID, "hello"));
+					string playerName = await GetFriendlyUsername(playerId);
+					Console.WriteLine($"Set {playerId} dead status to ${isDead}");
+				});
 			});
 			await Task.CompletedTask;
 		}

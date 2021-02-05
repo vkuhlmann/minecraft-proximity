@@ -19,6 +19,7 @@ namespace discordGame
 		public static Discord.Discord discord;
 		public static Discord.LobbyManager lobbyManager;
 		public static ConcurrentQueue<Func<Task>> nextTasks;
+		public static CoordinateReader coordinateReader;
 
 		// Based on Discord Game DSK example:
 		// discord_game_sdk.zip/examples/csharp/Program.cs
@@ -300,6 +301,13 @@ namespace discordGame
 			//	}
 			//});
 
+			coordinateReader = new CoordinateReader();
+
+			CancellationTokenSource cancelPrintCoordsSource = new CancellationTokenSource();
+			CancellationToken cancelPrintCoords = cancelPrintCoordsSource.Token;
+			Task printLoop = DoPrintCoordsLoop(cancelPrintCoords);
+
+
 			List<Task> runningTasks = new List<Task>();
 
 			Log.Information("Running callback loop on {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
@@ -349,9 +357,17 @@ namespace discordGame
 					}
 
 					await Task.Delay(1000 / 60);
-					if ((frame % 60) == 0)
-						Log.Information("Ping!");
+					//if ((frame % 60) == 0)
+					//	Log.Information("Ping!");
+
 				}
+
+				cancelPrintCoordsSource.Cancel();
+				try
+				{
+					printLoop.Wait();
+				}
+				catch (Exception ex) { }
 
 				//a.Wait();
 			}
@@ -361,6 +377,16 @@ namespace discordGame
 			}
 
 			//await a;
+		}
+
+		static async Task DoPrintCoordsLoop(CancellationToken tok)
+		{
+			while (true)
+			{
+				tok.ThrowIfCancellationRequested();
+				Log.Information($"Coords are {coordinateReader.GetCoords()?.ToString() ?? "null"}");
+				await Task.Delay(TimeSpan.FromSeconds(5), tok);
+			}
 		}
 
 		static async Task Main(string[] args)

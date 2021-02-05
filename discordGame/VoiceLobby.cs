@@ -188,6 +188,7 @@ namespace discordGame
 			{
 				//Log.Information("User {0} ({1}) has connected to the lobby! (Lobby {2})", await GetFriendlyUsername(userId), userId, lobby.Id);
 				Log.Information("User {UserFriendlyName} ({UserId}) has connected to the lobby! (Lobby {LobbyId})", await GetFriendlyUsername(userId), userId, lobbyId);
+				PrintUsers();
 			});
 			//Console.WriteLine($"Lobby {this.lobby.Id}: Connect from {userId} ({await GetFriendlyUsername(userId)})");
 		}
@@ -198,7 +199,7 @@ namespace discordGame
 			{
 				//Log.Information("User {0} ({1}) has disconnected from the lobby! (Lobby {2})", await GetFriendlyUsername(userId), userId, lobby.Id);
 				Log.Information("User {UserFriendlyName} ({UserId}) has disconnected from the lobby. (Lobby {LobbyId})", await GetFriendlyUsername(userId), userId, lobbyId);
-
+				PrintUsers();
 			});
 			//Console.WriteLine($"Lobby {this.lobby.Id}: Disconnect from {userId} ({await GetFriendlyUsername(userId)})");
 		}

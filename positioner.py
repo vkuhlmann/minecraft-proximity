@@ -142,6 +142,8 @@ class Snippeter:
         if monitors == None:
             raise Exception("get_monitors return None")
 
+        print(f"Calibrating! Monitors is {monitors}")
+
         self.pos = None
         self.bbox = None
 

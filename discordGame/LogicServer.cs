@@ -174,7 +174,7 @@ namespace discordGame
 				dict["pos"]["z"] = new PyFloat(pl.coords.Value.z);
 			}
 			dict["userId"] = new PyInt(pl.userId);
-			dict["username"] = new PyString(pl.playerName);
+			dict["username"] = new PyString(pl.playerName); 
 
 			using (Py.GIL())
 			{

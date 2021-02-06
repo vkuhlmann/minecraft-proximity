@@ -82,6 +82,7 @@ class CoordinateReader:
         return None
 
     def setScreen(self, scr):
+        print(f"Setting screen to {scr}")
         self.snippeter.setScreen(scr)
 
     def getCoordinates(self):

@@ -178,7 +178,10 @@ namespace discordGame
 
 		public void SetScreen(int screen)
 		{
-			coordReaderPy.setScreen(screen);
+			using (Py.GIL())
+			{
+				coordReaderPy.setScreen(screen);
+			}
 		}
 	}
 }

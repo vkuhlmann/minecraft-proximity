@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using Python.Included;
 using Python.Runtime;
+using System.Text.RegularExpressions;
 
 
 // Use and distribution of this program requires compliance with https://dotnet.microsoft.com/en/dotnet_library_license.htm
@@ -22,7 +23,7 @@ namespace discordGame
 		public static Discord.Discord discord;
 		public static Discord.LobbyManager lobbyManager;
 		public static ConcurrentQueue<Func<Task>> nextTasks;
-		public static CoordinateReader coordinateReader;
+		//public static CoordinateReader coordinateReader;
 		public static long currentUserId;
 		public static LogicClient client;
 		public static LogicServer server;
@@ -216,6 +217,9 @@ namespace discordGame
 
 			pythonSetupTask = Task.Run(() => setupPython());
 
+			var lobbyManager = discord.GetLobbyManager();
+			Program.lobbyManager = lobbyManager;
+
 			discord.SetLogHook(Discord.LogLevel.Debug, (level, message) =>
 			{
 				if (level == Discord.LogLevel.Error)
@@ -226,10 +230,10 @@ namespace discordGame
 					Log.Information($"Discord ({level}): {message}");
 			});
 
+
 			var activityManager = discord.GetActivityManager();
-			var lobbyManager = discord.GetLobbyManager();
-			Program.lobbyManager = lobbyManager;
-		
+
+
 
 			// Received when someone accepts a request to join or invite.
 			// Use secrets to receive back the information needed to add the user to the group/party/match
@@ -375,7 +379,7 @@ namespace discordGame
 			//	}
 			//});
 
-			coordinateReader = new CoordinateReader();
+			//coordinateReader = new CoordinateReader();
 
 			CancellationTokenSource cancelPrintCoordsSource = new CancellationTokenSource();
 			CancellationToken cancelPrintCoords = cancelPrintCoordsSource.Token;
@@ -412,7 +416,7 @@ namespace discordGame
 						Task a = scheduledTasks[i].Item2(); //new Task(scheduledTasks[i].Item2);
 						runningTasks.Add(a);
 						//a.RunSynchronously();
-						
+
 						scheduledTasks.RemoveAt(i);
 					}
 
@@ -470,6 +474,8 @@ namespace discordGame
 
 		static async Task ExecuteCommand(string s)
 		{
+			Match m;
+
 			if (s == "quit")
 			{
 				isQuitRequested = true;
@@ -486,6 +492,16 @@ namespace discordGame
 				server?.Stop();
 				server = new LogicServer(currentLobby);
 				server.AdvertiseHost();
+
+			}
+			else if ((m = Regex.Match(s, "screen (?<screenNum>[+-]?[\\d+])")).Success)
+			{
+				if (client == null)
+				{
+					Console.WriteLine("Client is null");
+					return;
+				}
+				client.coordsReader.SetScreen(int.Parse(m.Groups["screenNum"].Value));
 
 			}
 			else
@@ -506,7 +522,8 @@ namespace discordGame
 				try
 				{
 					await ExecuteCommand(line);
-				}catch(Exception ex)
+				}
+				catch (Exception ex)
 				{
 					Log.Error("Error executing command: {Message}", ex.Message);
 					Log.Error("StackTrace:");
@@ -520,8 +537,8 @@ namespace discordGame
 			while (true)
 			{
 				tok.ThrowIfCancellationRequested();
-				Log.Information($"Coords are {coordinateReader.GetCoords()?.ToString() ?? "null"}");
-				await Task.Delay(TimeSpan.FromSeconds(5), tok);
+				Log.Information($"Coords are {client?.coordsReader?.GetCoords()?.ToString() ?? "null"}");
+				await Task.Delay(TimeSpan.FromSeconds(10), tok);
 			}
 		}
 
@@ -536,7 +553,8 @@ namespace discordGame
 
 				await RunAsync(args);
 				Log.CloseAndFlush();
-			}catch (Exception ex)
+			}
+			catch (Exception ex)
 			{
 				Console.WriteLine("Fatal error:");
 				Console.WriteLine(ex);

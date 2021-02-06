@@ -4,6 +4,8 @@ using System.Text;
 using System.Threading.Tasks;
 using Serilog;
 using System.Threading;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace discordGame
 {
@@ -12,12 +14,16 @@ namespace discordGame
 		Discord.Lobby lobby;
 		Discord.LobbyManager lobbyManager;
 
+		public delegate void OnNetworkJson(long sender, byte channel, JObject jObject);
+
 		public event Discord.LobbyManager.LobbyMessageHandler onLobbyMessage;
 		public event Discord.LobbyManager.NetworkMessageHandler onNetworkMessage;
 		public event Discord.LobbyManager.SpeakingHandler onSpeaking;
 
 		public event Discord.LobbyManager.MemberConnectHandler onMemberConnect;
 		public event Discord.LobbyManager.MemberDisconnectHandler onMemberDisconnect;
+
+		public event OnNetworkJson onNetworkJson;
 
 		public Task currentTask;
 		public Discord.LobbyManager.ConnectVoiceHandler connVoiceHandler;
@@ -129,7 +135,20 @@ namespace discordGame
 			Log.Information("Connecting to network. (Lobby {LobbyId})", lobby.Id);
 			lobbyManager.ConnectNetwork(lobby.Id);
 			//Log.Information("Opening channel. (Lobby {LobbyId})", lobby.Id);
-			//lobbyManager.OpenNetworkChannel(lobby.Id, 0, true);
+
+			// Channel 0: reliable send to client
+			lobbyManager.OpenNetworkChannel(lobby.Id, 0, true);
+
+			// Channel 1: unreliable send to client
+			lobbyManager.OpenNetworkChannel(lobby.Id, 1, false);
+
+			// Channel 2: reliable send to server
+			lobbyManager.OpenNetworkChannel(lobby.Id, 2, true);
+
+			// Channel 3: unreliable send/receive to server
+			lobbyManager.OpenNetworkChannel(lobby.Id, 3, false);
+
+
 			//Log.Information("Opened channel. (Lobby {LobbyId})", lobby.Id);
 
 			//foreach (var user in lobbyManager.GetMemberUsers(lobby.Id))
@@ -176,6 +195,11 @@ namespace discordGame
 			onMemberConnect += HandleOnMemberConnect;
 			onMemberDisconnect += HandleOnMemberDisconnect;
 
+			onNetworkMessage += (lobbyId, userId, channelId, data) =>
+			{
+				onNetworkJson?.Invoke(userId, channelId, JObject.Parse(Encoding.UTF8.GetString(data)));
+			};
+
 			SetAsActivity();
 
 			// Update activity.
@@ -214,6 +238,27 @@ namespace discordGame
 				Console.WriteLine($"  {user.Username}#{user.Discriminator} ({user.Id})");
 			}
 			Console.WriteLine();
+		}
+
+		public IEnumerable<Discord.User> GetMembers()
+		{
+			foreach (var user in Program.lobbyManager.GetMemberUsers(lobby.Id))
+			{
+				yield return user;
+			}
+		}
+
+		public async void SendNetworkJson(long recipient, byte channel, JObject jObject)
+		{
+			if (recipient == Program.currentUserId)
+			{
+				onNetworkJson?.Invoke(Program.currentUserId, channel, (JObject)jObject.DeepClone());
+				return;
+			}
+
+			lobbyManager.SendNetworkMessage(lobby.Id, recipient, channel,
+				Encoding.UTF8.GetBytes(jObject.ToString(Formatting.Indented)));
+			await Task.CompletedTask;
 		}
 
 		public void PrintMetadata()

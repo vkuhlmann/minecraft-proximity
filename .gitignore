@@ -2,3 +2,4 @@
 /discordGame/bin
 /discordGame/.vs
 __pycache__/
+.vscode/

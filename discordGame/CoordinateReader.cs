@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Text;
 //using IronPython;
 using Serilog;
-using Python.Included;
 using Python.Runtime;
 using System.Threading.Tasks;
 using System.IO;
@@ -11,29 +10,29 @@ using System.IO;
 
 namespace discordGame
 {
+	public struct Coords
+	{
+		public float x;
+		public float y;
+		public float z;
+
+		public Coords(float x, float y, float z)
+		{
+			this.x = x;
+			this.y = y;
+			this.z = z;
+		}
+
+		public override string ToString()
+		{
+			return $"{x}, {y}, {z}";
+		}
+	}
+
 	class CoordinateReader
 	{
 		PyScope scope;
 		dynamic coordReaderPy;
-
-		public struct Coord
-		{
-			float x;
-			float y;
-			float z;
-
-			public Coord(float x, float y, float z)
-			{
-				this.x = x;
-				this.y = y;
-				this.z = z;
-			}
-
-			public override string ToString()
-			{
-				return $"{x}, {y}, {z}";
-			}
-		}
 
 		public CoordinateReader()
 		{
@@ -59,8 +58,6 @@ namespace discordGame
 			//Console.WriteLine();
 			//self.coordReader = coordinateReader.CoordinateReader()
 
-			string libPath = @"D:\Projects\minecraft-proximity";
-
 			//string orig = Environment.GetEnvironmentVariable("PYTHONPATH") ?? PythonEngine.PythonPath;
 			//Environment.SetEnvironmentVariable("PYTHONPATH", orig + $";{libPath}", EnvironmentVariableTarget.Process);
 
@@ -69,55 +66,17 @@ namespace discordGame
 
 			//Environment.SetEnvironmentVariable("PYTHONPATH", $"{libPath};", EnvironmentVariableTarget.Process);
 
-			Func<Task> setupPython = async () =>
-			{
-				await Installer.SetupPython();
+			//Func<Task> setupPython = async () =>
+			//{
 
-				//PythonEngine.PythonPath += ";";
+			//};
 
-				bool pipInstalled = Installer.TryInstallPip();
-				Console.WriteLine($"Install pip returned {pipInstalled}");
+			//Task task = setupPython();
+			//task.Wait();
 
-				Installer.PipInstallModule("numpy");
-				Console.WriteLine($"Installed numpy");
-
-				Installer.PipInstallModule("pillow");
-				Console.WriteLine($"Installed pillow");
-
-				Installer.PipInstallModule("screeninfo");
-				Console.WriteLine($"Installed screeninfo");
-
-				//Console.WriteLine($"PYTHONPATH was {PythonEngine.PythonPath}");
-				//Console.WriteLine($"Win PYTHONPATH was {Environment.GetEnvironmentVariable("PYTHONPATH")}");
-
-				//PythonEngine.PythonPath += $";\"{libPath}\"";
-
-
-				//PythonEngine.
-
-				PythonEngine.Initialize();
-				//Console.WriteLine($"PYTHONPATH was {PythonEngine.PythonPath}");
-				//Console.WriteLine($"Win PYTHONPATH was {Environment.GetEnvironmentVariable("PYTHONPATH")}");
-
-				//string libPath = @"D:\Projects\minecraft-proximity";
-				//PythonEngine.PythonPath += $";\"{libPath}\"";
-				//PythonEngine.PythonPath += $";{libPath}";
-
-				//Console.WriteLine($"PYTHONPATH is now {PythonEngine.PythonPath}");
-
-				//Console.WriteLine($"PYTHONPATH is now {PythonEngine.PythonPath}\n");
-				//Console.WriteLine($"Win PYTHONPATH is now {Environment.GetEnvironmentVariable("PYTHONPATH")}\n");
-				//Console.WriteLine($"Win PATH is now {Environment.GetEnvironmentVariable("PATH")}\n");
-
-				dynamic sys = PythonEngine.ImportModule("sys");
-				Console.WriteLine("Python version: " + sys.version);
-				sys.path.append(libPath);
-				Console.WriteLine($"Sys.path: {sys.path}");
-			};
-
-			Task task = setupPython();
+			Task task = Program.pythonSetupTask;
 			task.Wait();
-
+			Log.Information("Initializing CoordinateReader");
 		
 			using (Py.GIL())
 			{
@@ -192,24 +151,34 @@ namespace discordGame
 			}
 		}
 
-		public Coord? GetCoords()
+		public Coords? GetCoords()
 		{
-			dynamic retValue;
-			try
+			using (Py.GIL())
 			{
-				retValue = coordReaderPy.getCoordinates();
+				dynamic retValue;
+				try
+				{
+					retValue = coordReaderPy.getCoordinates();
 
-			}catch(Exception ex)
-			{
-				Console.WriteLine($"Error getting coords: {ex}");
-				return null;
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine($"Error getting coords: {ex}");
+					return null;
+				}
+				if (retValue == null)
+					return null;
+				float x = retValue["x"];
+				float y = retValue["y"];
+				float z = retValue["z"];
+
+				return new Coords(x, y, z);
 			}
-			if (retValue == null)
-				return null;
-			float x = retValue["x"];
-			float y = retValue["y"];
-			float z = retValue["z"];
-			return new Coord(x, y, z);
+		}
+
+		public void SetScreen(int screen)
+		{
+			coordReaderPy.setScreen(screen);
 		}
 	}
 }

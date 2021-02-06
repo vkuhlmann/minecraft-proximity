@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 using Serilog;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
+using Python.Included;
+using Python.Runtime;
+
 
 // Use and distribution of this program requires compliance with https://dotnet.microsoft.com/en/dotnet_library_license.htm
 // As per necessary by some dependencies.
@@ -20,6 +23,9 @@ namespace discordGame
 		public static Discord.LobbyManager lobbyManager;
 		public static ConcurrentQueue<Func<Task>> nextTasks;
 		public static CoordinateReader coordinateReader;
+		public static long currentUserId;
+		public static LogicClient client;
+		public static LogicServer server;
 
 		// Based on Discord Game DSK example:
 		// discord_game_sdk.zip/examples/csharp/Program.cs
@@ -97,6 +103,9 @@ namespace discordGame
 
 		static VoiceLobby currentLobby = null;
 		static bool createLobby = true;
+		static bool isQuitRequested = false;
+
+		public static Task pythonSetupTask;
 
 		static async Task createLobbyIfNone()
 		{
@@ -109,11 +118,67 @@ namespace discordGame
 			//currentLobby = VoiceLobby.Create().Result;
 			currentLobby = await VoiceLobby.Create();
 			Log.Information("Lobby has been created");
+			client?.Stop();
+			client = new LogicClient(currentLobby);
+		}
+
+		static async Task setupPython()
+		{
+			string libPath = @"D:\Projects\minecraft-proximity";
+			await Installer.SetupPython();
+
+			//PythonEngine.PythonPath += ";";
+
+			bool pipInstalled = Installer.TryInstallPip();
+			Console.WriteLine($"Install pip returned {pipInstalled}");
+
+			Installer.PipInstallModule("numpy");
+			Console.WriteLine($"Installed numpy");
+
+			Installer.PipInstallModule("pillow");
+			Console.WriteLine($"Installed pillow");
+
+			Installer.PipInstallModule("screeninfo");
+			Console.WriteLine($"Installed screeninfo");
+
+			//Console.WriteLine($"PYTHONPATH was {PythonEngine.PythonPath}");
+			//Console.WriteLine($"Win PYTHONPATH was {Environment.GetEnvironmentVariable("PYTHONPATH")}");
+
+			//PythonEngine.PythonPath += $";\"{libPath}\"";
+
+
+			//PythonEngine.
+
+			PythonEngine.Initialize();
+			//Console.WriteLine($"PYTHONPATH was {PythonEngine.PythonPath}");
+			//Console.WriteLine($"Win PYTHONPATH was {Environment.GetEnvironmentVariable("PYTHONPATH")}");
+
+			//string libPath = @"D:\Projects\minecraft-proximity";
+			//PythonEngine.PythonPath += $";\"{libPath}\"";
+			//PythonEngine.PythonPath += $";{libPath}";
+
+			//Console.WriteLine($"PYTHONPATH is now {PythonEngine.PythonPath}");
+
+			//Console.WriteLine($"PYTHONPATH is now {PythonEngine.PythonPath}\n");
+			//Console.WriteLine($"Win PYTHONPATH is now {Environment.GetEnvironmentVariable("PYTHONPATH")}\n");
+			//Console.WriteLine($"Win PATH is now {Environment.GetEnvironmentVariable("PATH")}\n");
+
+			using (Py.GIL())
+			{
+				dynamic sys = PythonEngine.ImportModule("sys");
+				Console.WriteLine("Python version: " + sys.version);
+				sys.path.append(libPath);
+				Console.WriteLine($"Sys.path: {sys.path}");
+			}
+			PythonEngine.BeginAllowThreads();
 		}
 
 		static async Task RunAsync(string[] args)
 		{
 			nextTasks = new ConcurrentQueue<Func<Task>>();
+			client = null;
+			server = null;
+
 			var clientID = "804643036755001365";
 
 			Console.Write("DISCORD_INSTANCE_ID: ");
@@ -149,6 +214,8 @@ namespace discordGame
 			}
 			Program.discord = discord;
 
+			pythonSetupTask = Task.Run(() => setupPython());
+
 			discord.SetLogHook(Discord.LogLevel.Debug, (level, message) =>
 			{
 				if (level == Discord.LogLevel.Error)
@@ -177,6 +244,8 @@ namespace discordGame
 
 					//Log.Information($"Joining activity {secret}");
 					currentLobby = await VoiceLobby.FromSecret(secret);
+					client?.Stop();
+					client = new LogicClient(currentLobby);
 				});
 
 				//lobbyManager.ConnectLobbyWithActivitySecret(secret, (Discord.Result result, ref Discord.Lobby lobby) =>
@@ -228,6 +297,7 @@ namespace discordGame
 				var currentUser = userManager.GetCurrentUser();
 				Console.WriteLine(currentUser.Username);
 				Console.WriteLine(currentUser.Id);
+				currentUserId = currentUser.Id;
 			};
 
 
@@ -249,20 +319,24 @@ namespace discordGame
 				(2,//180,
 				async () =>
 				{
-					if (!createLobby || currentLobby != null)
-					{
-						Log.Information("Not creating lobby: already exists");
-						return;
-					}
+					await createLobbyIfNone();
 
-					Log.Information("Creating new lobby");
+					//if (!createLobby || currentLobby != null)
+					//{
+					//	Log.Information("Not creating lobby: already exists");
+					//	return;
+					//}
 
-					//currentLobby = VoiceLobby.Create().Result;
-					currentLobby = await VoiceLobby.Create();
-					//Log.Information("Lobby has been created");
-					//Log.Information("Blocking for 10 seconds");
-					//Thread.Sleep(10000);
-					//Log.Information("Done blocking");
+					//Log.Information("Creating new lobby");
+
+					////currentLobby = VoiceLobby.Create().Result;
+					//currentLobby = await VoiceLobby.Create();
+					////Log.Information("Lobby has been created");
+					////Log.Information("Blocking for 10 seconds");
+					////Thread.Sleep(10000);
+					////Log.Information("Done blocking");
+
+					//client = new LogicClient(currentLobby);
 				}
 				)
 			};
@@ -312,13 +386,18 @@ namespace discordGame
 
 			Log.Information("Running callback loop on {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
 
+			CancellationTokenSource cancelExecLoopSource = new CancellationTokenSource();
+			CancellationToken cancelExecLoop = cancelExecLoopSource.Token;
+
+			Task execLoop = Task.Run(() => DoExecLoop(cancelExecLoop));
+
 			// Pump the event look to ensure all callbacks continue to get fired.
 			try
 			{
 				Console.WriteLine("Running. Press Q to quit.");
 				int frame = 0;
 
-				while (true)
+				while (!isQuitRequested)
 				{
 					frame += 1;
 					int i = 0;
@@ -349,12 +428,12 @@ namespace discordGame
 					for (i = 0; i < scheduledTasks.Count; i++)
 						scheduledTasks[i] = (scheduledTasks[i].Item1 - 1, scheduledTasks[i].Item2);
 
-					if (Console.KeyAvailable)
-					{
-						ConsoleKeyInfo key = Console.ReadKey(true);
-						if (key.Key == ConsoleKey.Q)
-							break;
-					}
+					//if (Console.KeyAvailable)
+					//{
+					//	ConsoleKeyInfo key = Console.ReadKey(true);
+					//	if (key.Key == ConsoleKey.Q)
+					//		break;
+					//}
 
 					await Task.Delay(1000 / 60);
 					//if ((frame % 60) == 0)
@@ -362,12 +441,22 @@ namespace discordGame
 
 				}
 
+				server?.Stop();
+				client?.Stop();
+
 				cancelPrintCoordsSource.Cancel();
 				try
 				{
 					printLoop.Wait();
 				}
-				catch (Exception ex) { }
+				catch (Exception) { }
+
+				cancelExecLoopSource.Cancel();
+				try
+				{
+					execLoop.Wait();
+				}
+				catch (Exception) { }
 
 				//a.Wait();
 			}
@@ -377,6 +466,53 @@ namespace discordGame
 			}
 
 			//await a;
+		}
+
+		static async Task ExecuteCommand(string s)
+		{
+			if (s == "quit")
+			{
+				isQuitRequested = true;
+			}
+			else if (s == "createLobby")
+			{
+				nextTasks.Enqueue(async () =>
+				{
+					await createLobbyIfNone();
+				});
+			}
+			else if (s == "doHost")
+			{
+				server?.Stop();
+				server = new LogicServer(currentLobby);
+				server.AdvertiseHost();
+
+			}
+			else
+			{
+				Console.WriteLine($"Unrecognized command");
+			}
+			await Task.CompletedTask;
+		}
+
+		static async Task DoExecLoop(CancellationToken tok)
+		{
+			while (!isQuitRequested)
+			{
+				tok.ThrowIfCancellationRequested();
+				string line = Console.ReadLine();
+				if (line == null)
+					break;
+				try
+				{
+					await ExecuteCommand(line);
+				}catch(Exception ex)
+				{
+					Log.Error("Error executing command: {Message}", ex.Message);
+					Log.Error("StackTrace:");
+					Log.Error("{StackTrace}", ex.StackTrace);
+				}
+			}
 		}
 
 		static async Task DoPrintCoordsLoop(CancellationToken tok)

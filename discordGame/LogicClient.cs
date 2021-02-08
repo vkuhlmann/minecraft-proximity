@@ -13,9 +13,9 @@ namespace discordGame
 {
 	class Player
 	{
-		long userId;
-		string playerName;
-		float volume;
+		public long userId;
+		public string playerName;
+		public float volume;
 
 		public Player(long userId, string playerName, float volume = 1.0f)
 		{
@@ -28,6 +28,7 @@ namespace discordGame
 		{
 			Discord.VoiceManager voiceManager = Program.discord.GetVoiceManager();
 			voiceManager.SetLocalVolume(userId, (byte)(volume * 100));
+			this.volume = volume;
 			await Task.CompletedTask;
 		}
 	}
@@ -56,7 +57,7 @@ namespace discordGame
 			coordsReader = new CoordinateReader();
 			serverUser = -1;
 			ownUserId = Program.currentUserId;
-			sendCoordsInterval = TimeSpan.FromMilliseconds(20);
+			sendCoordsInterval = TimeSpan.FromMilliseconds(240);
 			transmitsProcessing = new ConcurrentQueue<bool>();
 
 			this.voiceLobby.onMemberConnect += VoiceLobby_onMemberConnect;
@@ -162,7 +163,10 @@ namespace discordGame
 						await RefreshPlayers();
 
 					if (players.TryGetValue(userId, out Player pl))
-						await pl.SetLocalVolume(volume);
+					{
+						if (Math.Abs(volume - pl.volume) > 0.05f)
+							await pl.SetLocalVolume(volume);
+					}
 				}
 			}
 			else if (action == "sendCoords")

@@ -125,7 +125,22 @@ namespace discordGame
 
 		static async Task setupPython()
 		{
-			string libPath = @"D:\Projects\minecraft-proximity";
+			//string libPath = @"D:\Projects\minecraft-proximity";
+			DirectoryInfo assemblyDir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);
+			DirectoryInfo dir = assemblyDir;
+			while (dir != null)
+			{
+				if (File.Exists(Path.Combine(dir.FullName, "coordinatereader.py")))
+					break;
+				dir = dir.Parent;
+			}
+
+			string libPath;
+			if (dir != null)
+				libPath = dir.FullName;
+			else
+				libPath = assemblyDir.FullName;
+
 			await Installer.SetupPython();
 
 			//PythonEngine.PythonPath += ";";
@@ -351,17 +366,17 @@ namespace discordGame
 			//	Log.Information("Lobby has been created");
 			//});
 
-			//var overlayManager = discord.GetOverlayManager();
+			var overlayManager = discord.GetOverlayManager();
 			////overlayManager.OnOverlayLocked += locked =>
 			////{
 			////	Console.WriteLine("Overlay Locked: {0}", locked);
 			////};
 			////overlayManager.SetLocked(false);
 
-			//if (!overlayManager.IsEnabled())
-			//{
-			//	Console.WriteLine("Overlay is not enabled. Modals will be shown in the Discord client instead");
-			//}
+			if (!overlayManager.IsEnabled())
+			{
+				Console.WriteLine("Overlay is not enabled. Modals will be shown in the Discord client instead");
+			}
 
 			//if (overlayManager.IsLocked())
 			//{
@@ -371,13 +386,13 @@ namespace discordGame
 			//	});
 			//}
 
-			//overlayManager.OpenVoiceSettings((result) =>
-			//{
-			//	if (result == Discord.Result.Ok)
-			//	{
-			//		Console.WriteLine("Overlay is open to the voice settings for your application");
-			//	}
-			//});
+			overlayManager.OpenVoiceSettings((result) =>
+			{
+				if (result == Discord.Result.Ok)
+				{
+					Console.WriteLine("Overlay is open to the voice settings for your application");
+				}
+			});
 
 			//coordinateReader = new CoordinateReader();
 
@@ -503,6 +518,17 @@ namespace discordGame
 				}
 				client.coordsReader.SetScreen(int.Parse(m.Groups["screenNum"].Value));
 
+			}
+			else if (s == "overlay")
+			{
+				var overlayManager = discord.GetOverlayManager();
+				overlayManager.OpenVoiceSettings((result) =>
+				{
+					if (result == Discord.Result.Ok)
+					{
+						Console.WriteLine("The overlay has been opened in Discord");
+					}
+				});
 			}
 			else
 			{

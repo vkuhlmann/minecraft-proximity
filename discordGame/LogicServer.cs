@@ -219,7 +219,7 @@ namespace discordGame
 			{
 				Log.Information("Starting server loop");
 				long ticks = Environment.TickCount64;
-				TimeSpan sendInterval = TimeSpan.FromMilliseconds(25);
+				TimeSpan sendInterval = TimeSpan.FromMilliseconds(250);
 				long sendIntervalTicks = (long)sendInterval.TotalMilliseconds;
 
 				TimeSpan minDelay = TimeSpan.FromMilliseconds(10);

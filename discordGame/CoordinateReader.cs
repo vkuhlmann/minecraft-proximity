@@ -6,6 +6,7 @@ using Serilog;
 using Python.Runtime;
 using System.Threading.Tasks;
 using System.IO;
+using System.Diagnostics;
 
 
 namespace discordGame
@@ -34,8 +35,20 @@ namespace discordGame
 		PyScope scope;
 		dynamic coordReaderPy;
 
+		long measureStart;
+		Stopwatch stopwatch;
+		int requests;
+		long measureEnd;
+		TimeSpan measureDur;
+
 		public CoordinateReader()
 		{
+			stopwatch = new Stopwatch();
+			measureDur = TimeSpan.FromSeconds(5);
+			measureStart = Environment.TickCount64;
+			measureEnd = measureStart + (long)measureDur.TotalMilliseconds;
+			requests = 0;
+
 			//var engine = IronPython.Hosting.Python.CreateEngine();
 
 			//ICollection<string> searchPaths = engine.GetSearchPaths();
@@ -153,26 +166,49 @@ namespace discordGame
 
 		public Coords? GetCoords()
 		{
-			using (Py.GIL())
+			if (Environment.TickCount64 > measureEnd)
 			{
-				dynamic retValue;
-				try
-				{
-					retValue = coordReaderPy.getCoordinates();
+				measureEnd = Environment.TickCount64;
 
-				}
-				catch (Exception ex)
-				{
-					Console.WriteLine($"Error getting coords: {ex}");
-					return null;
-				}
-				if (retValue == null)
-					return null;
-				float x = retValue["x"];
-				float y = retValue["y"];
-				float z = retValue["z"];
+				float durMs = (float)stopwatch.ElapsedMilliseconds / Math.Max(1, requests);
+				//Log.Information("Coords getting takes {DurMs:F2} ms on average ({Req} requests completed)", durMs, requests);
 
-				return new Coords(x, y, z);
+				stopwatch.Reset();
+				requests = 0;
+
+				measureStart = measureEnd;
+				measureEnd = measureStart + (long)measureDur.TotalMilliseconds;
+			}
+
+			stopwatch.Start();
+			try
+			{
+				using (Py.GIL())
+				{
+					dynamic retValue;
+					try
+					{
+						retValue = coordReaderPy.getCoordinates();
+
+					}
+					catch (Exception ex)
+					{
+						Console.WriteLine($"Error getting coords: {ex}");
+						return null;
+					}
+					if (retValue == null)
+						return null;
+					float x = retValue["x"];
+					float y = retValue["y"];
+					float z = retValue["z"];
+
+					return new Coords(x, y, z);
+				}
+			}
+			finally
+			{
+				requests += 1;
+				stopwatch.Stop();
 			}
 		}
 

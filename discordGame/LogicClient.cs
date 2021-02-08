@@ -7,6 +7,7 @@ using System.Threading;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
+using System.Collections.Concurrent;
 
 namespace discordGame
 {
@@ -45,6 +46,7 @@ namespace discordGame
 
 		CancellationTokenSource cancelTransmitCoords;
 		Task transmitCoordsTask;
+		ConcurrentQueue<bool> transmitsProcessing;
 
 		//List<Player> players;
 
@@ -54,7 +56,8 @@ namespace discordGame
 			coordsReader = new CoordinateReader();
 			serverUser = -1;
 			ownUserId = Program.currentUserId;
-			sendCoordsInterval = TimeSpan.FromSeconds(0.25);
+			sendCoordsInterval = TimeSpan.FromMilliseconds(20);
+			transmitsProcessing = new ConcurrentQueue<bool>();
 
 			this.voiceLobby.onMemberConnect += VoiceLobby_onMemberConnect;
 			this.voiceLobby.onMemberDisconnect += VoiceLobby_onMemberDisconnect;
@@ -196,9 +199,11 @@ namespace discordGame
 				this.coords.z
 			});
 
+			transmitsProcessing.Enqueue(true);
 			Program.nextTasks.Enqueue(async () =>
 			{
 				voiceLobby.SendNetworkJson(serverUser, 3, message);
+				transmitsProcessing.TryDequeue(out bool a);
 				await Task.CompletedTask;
 			});
 			await Task.CompletedTask;
@@ -207,11 +212,70 @@ namespace discordGame
 
 		public async Task DoSendCoordinatesLoop(CancellationToken ct)
 		{
-			while (true)
+			try
 			{
-				ct.ThrowIfCancellationRequested();
-				await SendCoordinates();
-				await Task.Delay(sendCoordsInterval, ct);
+				Log.Information("Starting send coordinates loop");
+				long ticks = Environment.TickCount64;
+				long sendIntervalTicks;
+
+				TimeSpan minDelay = TimeSpan.FromMilliseconds(10);
+
+				long statsStart = Environment.TickCount64;
+				TimeSpan statsInterval = TimeSpan.FromSeconds(5);
+				long nextStatsTickcount = Environment.TickCount64 + (long)statsInterval.TotalMilliseconds;
+				int submissions = 0;
+				int successes = 0;
+
+				while (true)
+				{
+					ct.ThrowIfCancellationRequested();
+					while (transmitsProcessing.Count > 0)
+						await Task.Delay(10, ct);
+					bool success = await SendCoordinates();
+
+					submissions++;
+					if (success)
+						successes++;
+
+					await Task.Delay(minDelay, ct);
+					if (Environment.TickCount64 > nextStatsTickcount)
+					{
+						long timesp = Environment.TickCount64 - statsStart;
+						float rate = submissions / ((float)timesp / 1000.0f);
+						float successRate = successes / Math.Max(1.0f, submissions);
+						Log.Information("Client: {Rate:F2} submissions per second. Success: {SuccessPerc:F1}%", rate, successRate * 100.0f);
+
+						statsStart = Environment.TickCount64;
+						nextStatsTickcount = statsStart + (long)statsInterval.TotalMilliseconds;
+						submissions = 0;
+						successes = 0;
+					}
+
+					sendIntervalTicks = (long)sendCoordsInterval.TotalMilliseconds;
+
+					long nowTicks = Environment.TickCount64;
+					if (nowTicks > ticks + sendIntervalTicks)
+					{
+						if (nowTicks > ticks + sendIntervalTicks * 3)
+							ticks = nowTicks;
+						else
+							ticks += sendIntervalTicks;
+					}
+					else
+					{
+						await Task.Delay((int)(ticks + sendIntervalTicks - nowTicks), ct);
+						ticks += sendIntervalTicks;
+					}
+					//await Task.Delay(sendCoordsInterval, ct);
+				}
+			}
+			catch (TaskCanceledException ex)
+			{
+				throw ex;
+			}
+			catch (Exception ex)
+			{
+				Log.Error("Error on send coordinates loop: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
 			}
 		}
 

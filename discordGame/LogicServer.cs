@@ -9,6 +9,8 @@ using Newtonsoft.Json.Linq;
 using Serilog;
 using Python.Included;
 using Python.Runtime;
+using System.Collections.Concurrent;
+
 
 namespace discordGame
 {
@@ -35,11 +37,13 @@ namespace discordGame
 		VoiceLobby voiceLobby;
 		Task transmitTask;
 		CancellationTokenSource cancelTransmitTask;
+		ConcurrentQueue<bool> transmitsProcessing;
 
 		public LogicServer(VoiceLobby voiceLobby)
 		{
 			this.voiceLobby = voiceLobby;
 			playersMap = new Dictionary<long, ServerPlayer>();
+			transmitsProcessing = new ConcurrentQueue<bool>();
 
 			this.voiceLobby.onMemberConnect += VoiceLobby_onMemberConnect;
 			this.voiceLobby.onMemberDisconnect += VoiceLobby_onMemberDisconnect;
@@ -200,9 +204,11 @@ namespace discordGame
 				players = playersData
 			});
 
+			transmitsProcessing.Enqueue(true);
 			Program.nextTasks.Enqueue(async () =>
 			{
 				voiceLobby.SendNetworkJson(target.userId, 1, data);
+				transmitsProcessing.TryDequeue(out bool a);
 				await Task.CompletedTask;
 			});
 		}
@@ -212,9 +218,23 @@ namespace discordGame
 			try
 			{
 				Log.Information("Starting server loop");
+				long ticks = Environment.TickCount64;
+				TimeSpan sendInterval = TimeSpan.FromMilliseconds(25);
+				long sendIntervalTicks = (long)sendInterval.TotalMilliseconds;
+
+				TimeSpan minDelay = TimeSpan.FromMilliseconds(10);
+
+				long statsStart = Environment.TickCount64;
+				TimeSpan statsInterval = TimeSpan.FromSeconds(5);
+				long nextStatsTickcount = Environment.TickCount64 + (long)statsInterval.TotalMilliseconds;
+				int submissions = 0;
+
 				while (true)
 				{
 					ct.ThrowIfCancellationRequested();
+					while (transmitsProcessing.Count > 0)
+						await Task.Delay(10, ct);
+
 					using (Py.GIL())
 					{
 						IEnumerable<ServerPlayer> players = playersMap.Values;
@@ -235,7 +255,34 @@ namespace discordGame
 							SetUserVolumes(pl, volumes);
 						}
 					}
-					await Task.Delay(TimeSpan.FromSeconds(0.24), ct);
+					submissions++;
+
+					await Task.Delay(minDelay, ct);
+					if (Environment.TickCount64 > nextStatsTickcount)
+					{
+						long timesp = Environment.TickCount64 - statsStart;
+						float rate = submissions / (timesp / 1000.0f);
+						Log.Information("Server: {Rate:F2} submissions per second", rate);
+
+						statsStart = Environment.TickCount64;
+						nextStatsTickcount = statsStart + (long)statsInterval.TotalMilliseconds;
+						submissions = 0;
+					}
+
+					long nowTicks = Environment.TickCount64;
+					if (nowTicks > ticks + sendIntervalTicks)
+					{
+						if (nowTicks > ticks + sendIntervalTicks * 3)
+							ticks = nowTicks;
+						else
+							ticks += sendIntervalTicks;
+					}
+					else
+					{
+						await Task.Delay((int)(ticks + sendIntervalTicks - nowTicks), ct);
+						ticks += sendIntervalTicks;
+					}
+					//await Task.Delay(TimeSpan.FromSeconds(0.24), ct);
 				}
 			}
 			catch (TaskCanceledException ex)

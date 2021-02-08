@@ -51,7 +51,7 @@ class LogicServer:
         self.obsc = Obscuration(
             np.array([92, 56, -59]),
             np.array([93, 58, -53]),
-            transmissionCoeff=0.2)
+            transmissionCoeff=0.1)
 
     @staticmethod
     def Create():
@@ -76,6 +76,6 @@ class LogicServer:
         #return max(1.0 - dist / 10.0, 0.0)
         halvingDistance = 10
 
-        factor = self.obsc.getFactor(sender.position, self.position)
+        factor = self.obsc.getFactor(othPos, basePos)
 
         return max(1.0 - (dist / halvingDistance)**2 / 2, 0.0) * factor

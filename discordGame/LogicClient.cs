@@ -54,7 +54,7 @@ namespace discordGame
 			coordsReader = new CoordinateReader();
 			serverUser = -1;
 			ownUserId = Program.currentUserId;
-			sendCoordsInterval = TimeSpan.FromSeconds(0.5);
+			sendCoordsInterval = TimeSpan.FromSeconds(0.25);
 
 			this.voiceLobby.onMemberConnect += VoiceLobby_onMemberConnect;
 			this.voiceLobby.onMemberDisconnect += VoiceLobby_onMemberDisconnect;
@@ -148,7 +148,7 @@ namespace discordGame
 			}
 			else if (action == "setVolumes")
 			{
-				Log.Information("Setting volumes! {Data}", data["players"]);
+				//Log.Information("Setting volumes! {Data}", data["players"].ToString());
 
 				foreach (JObject dat in data["players"])
 				{
@@ -196,7 +196,11 @@ namespace discordGame
 				this.coords.z
 			});
 
-			voiceLobby.SendNetworkJson(serverUser, 3, message);
+			Program.nextTasks.Enqueue(async () =>
+			{
+				voiceLobby.SendNetworkJson(serverUser, 3, message);
+				await Task.CompletedTask;
+			});
 			await Task.CompletedTask;
 			return true;
 		}

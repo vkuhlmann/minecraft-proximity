@@ -319,10 +319,10 @@ namespace discordGame
 
 		public async Task<string> GetFriendlyUsername(long playerId)
 		{
-			Log.Information("Getting Friendly Username on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
-			Log.Information("Blocking for 5 seconds");
-			Thread.Sleep(5000);
-			Log.Information("Done blocking");
+			//Log.Information("Getting Friendly Username on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
+			//Log.Information("Blocking for 5 seconds");
+			//Thread.Sleep(5000);
+			//Log.Information("Done blocking");
 
 			UserResult res = await UserResult.GetUser(playerId);
 			if (res.result == Discord.Result.Ok)

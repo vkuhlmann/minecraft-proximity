@@ -309,18 +309,18 @@ namespace discordGame
 			{
 				Log.Information("Received lobby message: {0} {1}", lobbyID, Encoding.UTF8.GetString(data));
 			};
-			lobbyManager.OnNetworkMessage += (lobbyId, userId, channelId, data) =>
-			{
-				Log.Information("Received network message: {0} {1} {2} {3}", lobbyId, userId, channelId, Encoding.UTF8.GetString(data));
-			};
-			lobbyManager.OnSpeaking += (lobbyID, userID, speaking) =>
-			{
-				Log.Information("Received lobby speaking: {0} {1} {2}", lobbyID, userID, speaking);
-			};
+			//lobbyManager.OnNetworkMessage += (lobbyId, userId, channelId, data) =>
+			//{
+			//	Log.Information("Received network message: {0} {1} {2} {3}", lobbyId, userId, channelId, Encoding.UTF8.GetString(data));
+			//};
+			//lobbyManager.OnSpeaking += (lobbyID, userID, speaking) =>
+			//{
+			//	Log.Information("Received lobby speaking: {0} {1} {2}", lobbyID, userID, speaking);
+			//};
 
 			List<(int, Func<Task>)> scheduledTasks = new List<(int, Func<Task>)>
 			{
-				(2,//180,
+				(180,
 				async () =>
 				{
 					await createLobbyIfNone();
@@ -538,7 +538,7 @@ namespace discordGame
 			{
 				tok.ThrowIfCancellationRequested();
 				Log.Information($"Coords are {client?.coordsReader?.GetCoords()?.ToString() ?? "null"}");
-				await Task.Delay(TimeSpan.FromSeconds(10), tok);
+				await Task.Delay(TimeSpan.FromSeconds(30), tok);
 			}
 		}
 

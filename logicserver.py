@@ -12,7 +12,7 @@ class LogicServer:
     @staticmethod
     def PlayerFromDict(dict):
         return {
-            "pos": np.array(dict["pos"]["x"], dict["pos"]["y"], dict["pos"]["z"]) \
+            "pos": np.array([dict["pos"]["x"], dict["pos"]["y"], dict["pos"]["z"]]) \
                 if dict["pos"] is not None else None,
             "userId": dict["userId"],
             "username": dict["username"]

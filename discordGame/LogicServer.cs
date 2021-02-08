@@ -199,7 +199,12 @@ namespace discordGame
 				action = "setVolumes",
 				players = playersData
 			});
-			voiceLobby.SendNetworkJson(target.userId, 1, data);
+
+			Program.nextTasks.Enqueue(async () =>
+			{
+				voiceLobby.SendNetworkJson(target.userId, 1, data);
+				await Task.CompletedTask;
+			});
 		}
 
 		public async Task DoRecalcLoop(CancellationToken ct)
@@ -230,7 +235,7 @@ namespace discordGame
 							SetUserVolumes(pl, volumes);
 						}
 					}
-					await Task.Delay(TimeSpan.FromSeconds(0.5), ct);
+					await Task.Delay(TimeSpan.FromSeconds(0.24), ct);
 				}
 			}
 			catch (TaskCanceledException ex)

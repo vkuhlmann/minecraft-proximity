@@ -178,6 +178,9 @@ namespace discordGame
 
 		static async Task RunAsync(string[] args)
 		{
+			Console.WriteLine("Use of this program is subject to the following licenses:");
+
+
 			nextTasks = new ConcurrentQueue<Func<Task>>();
 			client = null;
 			server = null;
@@ -535,6 +538,11 @@ namespace discordGame
 				catch (Exception) { }
 
 				//a.Wait();
+			}
+			catch(Exception ex)
+			{
+				Console.WriteLine($"Ended with error: {ex.Message}");
+				Console.WriteLine(ex.StackTrace);
 			}
 			finally
 			{

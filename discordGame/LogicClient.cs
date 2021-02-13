@@ -24,12 +24,11 @@ namespace discordGame
 			this.volume = volume;
 		}
 
-		public async Task SetLocalVolume(float volume = 1.0f)
+		public void SetLocalVolume(float volume = 1.0f)
 		{
 			Discord.VoiceManager voiceManager = Program.discord.GetVoiceManager();
 			voiceManager.SetLocalVolume(userId, (byte)(volume * 100));
 			this.volume = volume;
-			await Task.CompletedTask;
 		}
 	}
 
@@ -37,9 +36,9 @@ namespace discordGame
 	{
 		VoiceLobby voiceLobby;
 		Dictionary<long, Player> players;
-		
+
 		public CoordinateReader coordsReader { get; protected set; }
-		
+
 		Coords coords;
 		long serverUser;
 		long ownUserId;
@@ -47,30 +46,35 @@ namespace discordGame
 
 		CancellationTokenSource cancelTransmitCoords;
 		Task transmitCoordsTask;
-		ConcurrentQueue<bool> transmitsProcessing;
+		//ConcurrentQueue<bool> transmitsProcessing;
 
 		//List<Player> players;
 
 		public LogicClient(VoiceLobby voiceLobby)
 		{
 			this.voiceLobby = voiceLobby;
+
 			coordsReader = new CoordinateReader();
 			serverUser = -1;
 			ownUserId = Program.currentUserId;
 			sendCoordsInterval = TimeSpan.FromMilliseconds(240);
-			transmitsProcessing = new ConcurrentQueue<bool>();
+			//transmitsProcessing = new ConcurrentQueue<bool>();
 
 			this.voiceLobby.onMemberConnect += VoiceLobby_onMemberConnect;
 			this.voiceLobby.onMemberDisconnect += VoiceLobby_onMemberDisconnect;
 			this.voiceLobby.onNetworkJson += VoiceLobby_onNetworkJson;
 
-			Program.nextTasks.Enqueue(async () =>
-			{
-				await RefreshPlayers();				
-			});
+			transmitCoordsTask = null;
+
+			RefreshPlayers();
 
 			cancelTransmitCoords = new CancellationTokenSource();
 			transmitCoordsTask = DoSendCoordinatesLoop(cancelTransmitCoords.Token);
+
+			//Program.nextTasks.Enqueue(async () =>
+			//{
+			//	await RefreshPlayers();
+			//});
 		}
 
 		public void Stop()
@@ -90,20 +94,14 @@ namespace discordGame
 			}
 		}
 
-		private void VoiceLobby_onMemberDisconnect(long lobbyId, long userId)
-		{
-			Program.nextTasks.Enqueue(async () =>
-			{
-				await RefreshPlayers();
-			});
-		}
-
 		private void VoiceLobby_onMemberConnect(long lobbyId, long userId)
 		{
-			Program.nextTasks.Enqueue(async () =>
-			{
-				await RefreshPlayers();
-			});
+			RefreshPlayers();
+		}
+
+		private void VoiceLobby_onMemberDisconnect(long lobbyId, long userId)
+		{
+			RefreshPlayers();
 		}
 
 		private void VoiceLobby_onNetworkJson(long sender, byte channel, JObject jObject)
@@ -117,7 +115,7 @@ namespace discordGame
 			});
 		}
 
-		public async Task RefreshPlayers()
+		public void RefreshPlayers()
 		{
 			Dictionary<long, Player> newPlayers = new Dictionary<long, Player>();
 			foreach (Discord.User user in voiceLobby.GetMembers())
@@ -126,7 +124,6 @@ namespace discordGame
 				newPlayers[user.Id] = pl;
 			}
 			players = newPlayers;
-			await Task.CompletedTask;
 		}
 
 		//public async Task ReceiveNetworkMessage(byte[] message)
@@ -145,10 +142,10 @@ namespace discordGame
 				long userId = data["userId"].Value<long>();
 				float volume = data["volume"].Value<float>();
 				if (!players.ContainsKey(userId))
-					await RefreshPlayers();
+					RefreshPlayers();
 
 				if (players.TryGetValue(userId, out Player pl))
-					await pl.SetLocalVolume(volume);
+					pl.SetLocalVolume(volume);
 			}
 			else if (action == "setVolumes")
 			{
@@ -160,12 +157,12 @@ namespace discordGame
 					long userId = dat["userId"].Value<long>();
 					float volume = dat["volume"].Value<float>();
 					if (!players.ContainsKey(userId))
-						await RefreshPlayers();
+						RefreshPlayers();
 
 					if (players.TryGetValue(userId, out Player pl))
 					{
 						if (Math.Abs(volume - pl.volume) > 0.05f)
-							await pl.SetLocalVolume(volume);
+							pl.SetLocalVolume(volume);
 					}
 				}
 			}
@@ -179,7 +176,7 @@ namespace discordGame
 
 				serverUser = user;
 				Log.Information("Changed server to user {UserId}", serverUser);
-				await RefreshPlayers();
+				RefreshPlayers();
 			}
 			else
 			{
@@ -189,7 +186,7 @@ namespace discordGame
 
 		public async Task<bool> SendCoordinates()
 		{
-			Coords? coords = coordsReader.GetCoords();
+			Coords? coords = await coordsReader.GetCoords();
 			if (!coords.HasValue || serverUser == -1)
 				return false;
 			this.coords = coords.Value;
@@ -203,14 +200,9 @@ namespace discordGame
 				this.coords.z
 			});
 
-			transmitsProcessing.Enqueue(true);
-			Program.nextTasks.Enqueue(async () =>
-			{
-				voiceLobby.SendNetworkJson(serverUser, 3, message);
-				transmitsProcessing.TryDequeue(out bool a);
-				await Task.CompletedTask;
-			});
-			await Task.CompletedTask;
+			//transmitsProcessing.Enqueue(true);
+			voiceLobby.SendNetworkJson(serverUser, 3, message);
+			//transmitsProcessing.TryDequeue(out bool a);
 			return true;
 		}
 
@@ -229,13 +221,29 @@ namespace discordGame
 				long nextStatsTickcount = Environment.TickCount64 + (long)statsInterval.TotalMilliseconds;
 				int submissions = 0;
 				int successes = 0;
+				TaskCompletionSource<bool> completionSource = null;
+
+				ct.Register(() => {
+					TaskCompletionSource<bool> a = completionSource;
+					if (a != null)
+						a.TrySetCanceled();
+				});
 
 				while (true)
 				{
+					completionSource = new TaskCompletionSource<bool>();
+
 					ct.ThrowIfCancellationRequested();
-					while (transmitsProcessing.Count > 0)
-						await Task.Delay(10, ct);
-					bool success = await SendCoordinates();
+					//while (transmitsProcessing.Count > 0)
+					//	await Task.Delay(10, ct);
+
+					Program.nextTasks.Enqueue(async () =>
+					{
+						completionSource.SetResult(await SendCoordinates());
+					});
+					bool success = await completionSource.Task;
+
+					//bool success = await SendCoordinates();
 
 					submissions++;
 					if (success)
@@ -290,10 +298,10 @@ namespace discordGame
 		//	await Task.CompletedTask;
 		//}
 
-		async Task SetEveryone(float volume = 1.0f)
+		void SetEveryone(float volume = 1.0f)
 		{
 			foreach (Player pl in players.Values)
-				await pl.SetLocalVolume(volume);
+				pl.SetLocalVolume(volume);
 		}
 	}
 }

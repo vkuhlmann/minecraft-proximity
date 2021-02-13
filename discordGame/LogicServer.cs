@@ -10,10 +10,12 @@ using Serilog;
 using Python.Included;
 using Python.Runtime;
 using System.Collections.Concurrent;
-
+using System.Linq;
 
 namespace discordGame
 {
+	using VolumesMatrix = List<(long, List<(long, float)>)>;
+
 	class ServerPlayer
 	{
 		public long userId;
@@ -24,13 +26,16 @@ namespace discordGame
 		{
 			this.userId = userId;
 			this.playerName = playerName;
-			this.coords = null;
+			coords = null;
 		}
 	}
 
 	class LogicServer
 	{
 		Dictionary<long, ServerPlayer> playersMap;
+		ConcurrentQueue<List<ServerPlayer>> playersStores;
+
+		ConcurrentQueue<VolumesMatrix> volumesStores;
 
 		PyScope scope;
 		dynamic logicServerPy;
@@ -44,6 +49,8 @@ namespace discordGame
 			this.voiceLobby = voiceLobby;
 			playersMap = new Dictionary<long, ServerPlayer>();
 			transmitsProcessing = new ConcurrentQueue<bool>();
+			playersStores = new ConcurrentQueue<List<ServerPlayer>>();
+			volumesStores = new ConcurrentQueue<VolumesMatrix>();
 
 			this.voiceLobby.onMemberConnect += VoiceLobby_onMemberConnect;
 			this.voiceLobby.onMemberDisconnect += VoiceLobby_onMemberDisconnect;
@@ -98,7 +105,7 @@ namespace discordGame
 
 			//Program.nextTasks.Enqueue(async () =>
 			//{
-				
+
 			//});
 		}
 
@@ -178,7 +185,7 @@ namespace discordGame
 				dict["pos"]["z"] = new PyFloat(pl.coords.Value.z);
 			}
 			dict["userId"] = new PyInt(pl.userId);
-			dict["username"] = new PyString(pl.playerName); 
+			dict["username"] = new PyString(pl.playerName);
 
 			using (Py.GIL())
 			{
@@ -186,7 +193,7 @@ namespace discordGame
 			}
 		}
 
-		public void SetUserVolumes(ServerPlayer target, Dictionary<long, float> volumes)
+		public void SetUserVolumes(ServerPlayer target, IEnumerable<(long, float)> volumes)
 		{
 			JArray playersData = new JArray();
 			foreach ((long userId, float volume) in volumes)
@@ -204,13 +211,79 @@ namespace discordGame
 				players = playersData
 			});
 
-			transmitsProcessing.Enqueue(true);
-			Program.nextTasks.Enqueue(async () =>
+			//transmitsProcessing.Enqueue(true);
+			//Program.nextTasks.Enqueue(async () =>
+			//{
+			voiceLobby.SendNetworkJson(target.userId, 1, data);
+			//transmitsProcessing.TryDequeue(out bool a);
+			//});
+		}
+
+		public async Task<VolumesMatrix> CalculateVolumes()
+		{
+			List<ServerPlayer> playersStore;
+			if (!playersStores.TryDequeue(out playersStore))
+				playersStore = new List<ServerPlayer>();
+			playersStore.Clear();
+			playersStore.AddRange(playersMap.Values);
+
+			//foreach ((long key, ref ServerPlayer value) in playersMap)
+			//{
+			//	playersMapSwap[key] = value;
+			//}
+			//while (playersMapSwap.Keys.Except(playersMap.Keys).FirstOrDefault() != 0)
+			//{
+
+			//}
+
+			var t = Task.Run(new Func<VolumesMatrix>(() =>
 			{
-				voiceLobby.SendNetworkJson(target.userId, 1, data);
-				transmitsProcessing.TryDequeue(out bool a);
-				await Task.CompletedTask;
-			});
+				if (!volumesStores.TryDequeue(out VolumesMatrix mat))
+					mat = new VolumesMatrix();
+				int i = 0;
+
+				using (Py.GIL())
+				{
+					//IEnumerable<ServerPlayer> players = playersMap.Values;
+					foreach (ServerPlayer pl in playersStore)
+					{
+						List<(long, float)> li;
+						if (i < mat.Count)
+						{
+							li = mat[i].Item2;
+							li.Clear();
+							mat[i] = (pl.userId, li);
+						}
+						else
+						{
+							li = new List<(long, float)>();
+							mat.Add((pl.userId, li));
+						}
+						i += 1;
+
+						dynamic reprPl = GetUser(pl);
+
+						//Dictionary<long, float> volumes = new Dictionary<long, float>();
+						foreach (ServerPlayer oth in playersStore)
+						{
+							if (pl == oth)
+								continue;
+							dynamic reprOth = GetUser(oth);
+
+							li.Add((oth.userId, logicServerPy.GetVolume(reprPl, reprOth)));
+							//volumes[oth.userId] = logicServerPy.GetVolume(reprPl, reprOth);
+						}
+
+						//SetUserVolumes(pl, volumes);
+					}
+				}
+				mat.RemoveRange(i, mat.Count - i);
+				return mat;
+			}));
+
+			var r = await t;
+			playersStores.Enqueue(playersStore);
+			return r;
 		}
 
 		public async Task DoRecalcLoop(CancellationToken ct)
@@ -229,32 +302,36 @@ namespace discordGame
 				long nextStatsTickcount = Environment.TickCount64 + (long)statsInterval.TotalMilliseconds;
 				int submissions = 0;
 
+				TaskCompletionSource<bool> completionSource = null;
+				ct.Register(() => {
+					TaskCompletionSource<bool> a = completionSource;
+					if (a != null)
+						a.TrySetCanceled();
+				});
+
 				while (true)
 				{
+					completionSource = new TaskCompletionSource<bool>();
 					ct.ThrowIfCancellationRequested();
-					while (transmitsProcessing.Count > 0)
-						await Task.Delay(10, ct);
 
-					using (Py.GIL())
+					//while (transmitsProcessing.Count > 0)
+					//	await Task.Delay(10, ct);
+					var ans = await CalculateVolumes();
+
+					//Dictionary<long, float> a;
+					//SetUserVolumes(null, a.AsEnumerable().Select(it => (it.Key, it.Value)));
+
+					Program.nextTasks.Enqueue(async () =>
 					{
-						IEnumerable<ServerPlayer> players = playersMap.Values;
-						foreach (ServerPlayer pl in players)
-						{
-							dynamic reprPl = GetUser(pl);
+						foreach ((long userId, List<(long, float)> li) in ans)
+							SetUserVolumes(playersMap[userId], li);
+						completionSource.SetResult(true);
+						await Task.CompletedTask;
+					});
+					await completionSource.Task;
+					
+					volumesStores.Enqueue(ans);
 
-							Dictionary<long, float> volumes = new Dictionary<long, float>();
-							foreach (ServerPlayer oth in players)
-							{
-								if (pl == oth)
-									continue;
-								dynamic reprOth = GetUser(oth);
-
-								volumes[oth.userId] = logicServerPy.GetVolume(reprPl, reprOth);
-							}
-
-							SetUserVolumes(pl, volumes);
-						}
-					}
 					submissions++;
 
 					await Task.Delay(minDelay, ct);
@@ -289,7 +366,7 @@ namespace discordGame
 			{
 				throw ex;
 			}
-			catch(Exception ex)
+			catch (Exception ex)
 			{
 				Log.Error("Error on server loop: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
 			}

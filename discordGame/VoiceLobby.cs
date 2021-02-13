@@ -12,7 +12,7 @@ namespace discordGame
 	public class VoiceLobby
 	{
 		Discord.Lobby lobby;
-		Discord.LobbyManager lobbyManager;
+		readonly Discord.LobbyManager lobbyManager;
 
 		public delegate void OnNetworkJson(long sender, byte channel, JObject jObject);
 
@@ -74,6 +74,7 @@ namespace discordGame
 			{
 				if (result != Discord.Result.Ok)
 				{
+					Log.Error("Couldn't make lobby, result was {Result}", result);
 					completionSource.SetResult(null);
 					return;
 				}

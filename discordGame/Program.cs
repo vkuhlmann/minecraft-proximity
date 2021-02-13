@@ -118,12 +118,18 @@ namespace discordGame
 
 			//currentLobby = VoiceLobby.Create().Result;
 			currentLobby = await VoiceLobby.Create();
+			if (currentLobby == null)
+			{
+				Log.Error("Lobby was null");
+				return;
+			}
+
 			Log.Information("Lobby has been created");
 			client?.Stop();
 			client = new LogicClient(currentLobby);
 		}
 
-		static async Task setupPython()
+		static async Task SetupPython()
 		{
 			//string libPath = @"D:\Projects\minecraft-proximity";
 			DirectoryInfo assemblyDir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);
@@ -157,27 +163,7 @@ namespace discordGame
 			Installer.PipInstallModule("screeninfo");
 			Console.WriteLine($"Installed screeninfo");
 
-			//Console.WriteLine($"PYTHONPATH was {PythonEngine.PythonPath}");
-			//Console.WriteLine($"Win PYTHONPATH was {Environment.GetEnvironmentVariable("PYTHONPATH")}");
-
-			//PythonEngine.PythonPath += $";\"{libPath}\"";
-
-
-			//PythonEngine.
-
 			PythonEngine.Initialize();
-			//Console.WriteLine($"PYTHONPATH was {PythonEngine.PythonPath}");
-			//Console.WriteLine($"Win PYTHONPATH was {Environment.GetEnvironmentVariable("PYTHONPATH")}");
-
-			//string libPath = @"D:\Projects\minecraft-proximity";
-			//PythonEngine.PythonPath += $";\"{libPath}\"";
-			//PythonEngine.PythonPath += $";{libPath}";
-
-			//Console.WriteLine($"PYTHONPATH is now {PythonEngine.PythonPath}");
-
-			//Console.WriteLine($"PYTHONPATH is now {PythonEngine.PythonPath}\n");
-			//Console.WriteLine($"Win PYTHONPATH is now {Environment.GetEnvironmentVariable("PYTHONPATH")}\n");
-			//Console.WriteLine($"Win PATH is now {Environment.GetEnvironmentVariable("PATH")}\n");
 
 			using (Py.GIL())
 			{
@@ -226,11 +212,14 @@ namespace discordGame
 			catch (Exception ex)
 			{
 				Log.Fatal($"Error initializing Discord hook: {ex}");
+				//Console.WriteLine("Program was terminated");
+				Console.WriteLine("Press any key to quit");
+				Console.ReadKey(true);
 				return;
 			}
 			Program.discord = discord;
 
-			pythonSetupTask = Task.Run(() => setupPython());
+			pythonSetupTask = Task.Run(() => SetupPython());
 
 			var lobbyManager = discord.GetLobbyManager();
 			Program.lobbyManager = lobbyManager;
@@ -248,8 +237,6 @@ namespace discordGame
 
 			var activityManager = discord.GetActivityManager();
 
-
-
 			// Received when someone accepts a request to join or invite.
 			// Use secrets to receive back the information needed to add the user to the group/party/match
 			activityManager.OnActivityJoin += secret =>
@@ -258,7 +245,10 @@ namespace discordGame
 				{
 					createLobby = false;
 					if (currentLobby != null)
+					{
+						Log.Information("Disconnecting from previous lobby");
 						await currentLobby.Disconnect();
+					}
 					//await currentLobby?.Disconnect();
 
 					//Log.Information($"Joining activity {secret}");
@@ -373,10 +363,10 @@ namespace discordGame
 			////};
 			////overlayManager.SetLocked(false);
 
-			if (!overlayManager.IsEnabled())
-			{
-				Console.WriteLine("Overlay is not enabled. Modals will be shown in the Discord client instead");
-			}
+			//if (!overlayManager.IsEnabled())
+			//{
+			//	Console.WriteLine("Overlay is not enabled. Modals will be shown in the Discord client instead");
+			//}
 
 			//if (overlayManager.IsLocked())
 			//{
@@ -400,8 +390,8 @@ namespace discordGame
 			CancellationToken cancelPrintCoords = cancelPrintCoordsSource.Token;
 			Task printLoop = DoPrintCoordsLoop(cancelPrintCoords);
 
-
 			List<Task> runningTasks = new List<Task>();
+			Task delayingTask = Task.CompletedTask;
 
 			Log.Information("Running callback loop on {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
 
@@ -410,11 +400,17 @@ namespace discordGame
 
 			Task execLoop = Task.Run(() => DoExecLoop(cancelExecLoop));
 
+			long errorBunchDur = (long)TimeSpan.FromSeconds(10).TotalMilliseconds;
+			long errorBunchEnd = Environment.TickCount64 + errorBunchDur;
+			long errorBunchMax = 3;
+			long errorBunchCount = 0;
+
 			// Pump the event look to ensure all callbacks continue to get fired.
 			try
 			{
 				Console.WriteLine("Running. Press Q to quit.");
 				int frame = 0;
+				//delayingTask.Status == TaskStatus.Running
 
 				while (!isQuitRequested)
 				{
@@ -428,17 +424,73 @@ namespace discordGame
 							continue;
 						}
 
-						Task a = scheduledTasks[i].Item2(); //new Task(scheduledTasks[i].Item2);
-						runningTasks.Add(a);
+						nextTasks.Enqueue(scheduledTasks[i].Item2);
+
+						//Task a = scheduledTasks[i].Item2(); //new Task(scheduledTasks[i].Item2);
+						//runningTasks.Add(a);
 						//a.RunSynchronously();
 
 						scheduledTasks.RemoveAt(i);
 					}
 
-					if (nextTasks.TryDequeue(out Func<Task> b))
+					if (Environment.TickCount64 >= errorBunchEnd)
 					{
-						Task c = b();
-						runningTasks.Add(c);
+						if (errorBunchCount > errorBunchMax)
+							Log.Information("Showing errors again. Hid {NumErrors} errors", errorBunchCount - errorBunchMax);
+
+						errorBunchCount = 0;
+						errorBunchEnd = Environment.TickCount64 + errorBunchDur;
+					}
+
+					for (i = 0; i < runningTasks.Count; i++)
+					{
+						Task t = runningTasks[i];
+						if (!t.IsCompleted)
+							continue;
+					    TaskStatus st = t.Status;
+						try
+						{
+							//if (st != TaskStatus.RanToCompletion && st != TaskStatus.Faulted)
+							//	throw new Exception($"TaskStatus was {st}");
+							try
+							{
+								await t;
+							}
+							catch (AggregateException ex)
+							{
+								if (ex.InnerExceptions.Count == 1)
+									throw ex.InnerExceptions[0];
+								else
+									throw ex;
+							}
+						}
+						catch (TaskCanceledException) { }
+						catch (Exception ex)
+						{
+							if (++errorBunchCount <= errorBunchMax)
+							{
+								Log.Warning("Task ended with error: {Msg}", ex.Message);
+							}
+							else if (errorBunchCount == errorBunchMax + 1)
+							{
+								Log.Warning("Hiding errors, max rate has been reached", ex.Message);
+							}
+						}
+						runningTasks.Remove(t);
+						i--;
+					}
+
+					if (delayingTask.IsCompleted)
+					{
+						runningTasks.Remove(delayingTask);
+
+						if (nextTasks.TryDequeue(out Func<Task> b))
+						{
+							Task c = b();
+							//c.RunSynchronously();
+							delayingTask = c;
+							runningTasks.Add(c);
+						}
 					}
 
 					discord.RunCallbacks();
@@ -563,7 +615,15 @@ namespace discordGame
 			while (true)
 			{
 				tok.ThrowIfCancellationRequested();
-				Log.Information($"Coords are {client?.coordsReader?.GetCoords()?.ToString() ?? "null"}");
+				TaskCompletionSource<bool> cs = new TaskCompletionSource<bool>();
+				nextTasks.Enqueue(async () =>
+				{
+					Task<Coords?> t = client?.coordsReader?.GetCoords();
+
+					Log.Information($"Coords are {(t != null ? await t : null)?.ToString() ?? "null"}");
+					cs.SetResult(true);
+				});
+				await cs.Task;				
 				await Task.Delay(TimeSpan.FromSeconds(30), tok);
 			}
 		}

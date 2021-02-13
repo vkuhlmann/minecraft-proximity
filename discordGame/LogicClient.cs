@@ -84,7 +84,17 @@ namespace discordGame
 				cancelTransmitCoords.Cancel();
 				try
 				{
-					transmitCoordsTask.Wait();
+					try
+					{
+						transmitCoordsTask.Wait();
+					}
+					catch (AggregateException ex)
+					{
+						if (ex.InnerExceptions.Count == 1)
+							throw ex.InnerExceptions[0];
+						else
+							throw ex;
+					}
 				}
 				catch (TaskCanceledException) { }
 				catch (Exception ex)
@@ -174,7 +184,16 @@ namespace discordGame
 			{
 				long user = data["userId"].Value<long>();
 
+				if (user != Program.currentUserId && Program.server != null)
+				{
+					Log.Information("Stopping own server.");
+					Program.server?.Stop();
+					Program.server = null;
+				}
+
 				serverUser = user;
+
+
 				Log.Information("Changed server to user {UserId}", serverUser);
 				RefreshPlayers();
 			}
@@ -210,7 +229,7 @@ namespace discordGame
 		{
 			try
 			{
-				Log.Information("Starting send coordinates loop");
+				Log.Information("[Client] Starting send coordinates loop");
 				long ticks = Environment.TickCount64;
 				long sendIntervalTicks;
 
@@ -239,7 +258,7 @@ namespace discordGame
 
 					Program.nextTasks.Enqueue(async () =>
 					{
-						completionSource.SetResult(await SendCoordinates());
+						completionSource.TrySetResult(await SendCoordinates());
 					});
 					bool success = await completionSource.Task;
 
@@ -255,7 +274,7 @@ namespace discordGame
 						long timesp = Environment.TickCount64 - statsStart;
 						float rate = submissions / ((float)timesp / 1000.0f);
 						float successRate = successes / Math.Max(1.0f, submissions);
-						Log.Information("Client: {Rate:F2} submissions per second. Success: {SuccessPerc:F1}%", rate, successRate * 100.0f);
+						Log.Information("[Client] Coordinate submission attempts: {Rate:F2} per second. Success: {SuccessPerc:F1}%", rate, successRate * 100.0f);
 
 						statsStart = Environment.TickCount64;
 						nextStatsTickcount = statsStart + (long)statsInterval.TotalMilliseconds;

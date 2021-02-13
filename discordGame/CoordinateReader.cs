@@ -51,24 +51,25 @@ namespace discordGame
 
 			Task task = Program.pythonSetupTask;
 			task.Wait();
-			Log.Information("Initializing CoordinateReader");
+			Log.Information("[CoordinateReader] Initializing Python CoordinateReader...");
 		
 			using (Py.GIL())
 			{
 				scope = Py.CreateScope();
-				IEnumerable<string> imports = new List<string> { "sys", "numpy", "coordinateReader" };
+				IEnumerable<string> imports = new List<string> { "sys", "numpy", "coordinatereader" };
 				Dictionary<string, dynamic> modules = new Dictionary<string, dynamic>();
 
 				foreach (string import in imports)
 				{
 					modules[import] = scope.Import(import);
-					Console.WriteLine($"Imported {import}");
+					//Console.WriteLine($"Imported {import}");
 				}
 
-				dynamic coordinateReader = modules["coordinateReader"];
+				dynamic coordinateReader = modules["coordinatereader"];
 				dynamic inst = coordinateReader.CoordinateReader.Create();
 				coordReaderPy = inst;				
 			}
+			Log.Information("[CoordinateReader] Initialization done.");
 		}
 
 		public async Task<Coords?> GetCoords()

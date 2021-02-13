@@ -124,7 +124,6 @@ namespace discordGame
 				return;
 			}
 
-			Log.Information("Lobby has been created");
 			client?.Stop();
 			client = new LogicClient(currentLobby);
 		}
@@ -147,30 +146,32 @@ namespace discordGame
 			else
 				libPath = assemblyDir.FullName;
 
+			Log.Information("[Python] Setting up...");
 			await Installer.SetupPython();
 
 			//PythonEngine.PythonPath += ";";
 
 			bool pipInstalled = Installer.TryInstallPip();
-			Console.WriteLine($"Install pip returned {pipInstalled}");
+			if (pipInstalled)
+				Log.Information($"Installed pip");
 
 			Installer.PipInstallModule("numpy");
-			Console.WriteLine($"Installed numpy");
+			//Console.WriteLine($"Installed numpy");
 
 			Installer.PipInstallModule("pillow");
-			Console.WriteLine($"Installed pillow");
+			//Console.WriteLine($"Installed pillow");
 
 			Installer.PipInstallModule("screeninfo");
-			Console.WriteLine($"Installed screeninfo");
+			//Console.WriteLine($"Installed screeninfo");
 
 			PythonEngine.Initialize();
 
 			using (Py.GIL())
 			{
 				dynamic sys = PythonEngine.ImportModule("sys");
-				Console.WriteLine("Python version: " + sys.version);
+				Log.Information("[Python] Setup done. Version: " + sys.version);
 				sys.path.append(libPath);
-				Console.WriteLine($"Sys.path: {sys.path}");
+				//Console.WriteLine($"Sys.path: {sys.path}");
 			}
 			PythonEngine.BeginAllowThreads();
 		}
@@ -275,13 +276,15 @@ namespace discordGame
 			activityManager.OnActivityJoinRequest += (ref Discord.User user) =>
 			{
 				//Console.WriteLine("OnJoinRequest {0} {1}", user.Id, user.Username);
-				Log.Information($"User {user.Username} ({user.Id}) is requesting to join!");
+				//Log.Information($"User {user.Username} ({user.Id}) is requesting to join!");
+				Log.Information("User {Username}#{Discriminator} is requesting to join.", user.Username, user.Discriminator);
+				Log.Information("The request can be reviewed from within Discord.");
 			};
 			// An invite has been received. Consider rendering the user / activity on the UI.
 			activityManager.OnActivityInvite += (Discord.ActivityActionType Type, ref Discord.User user, ref Discord.Activity activity2) =>
 			{
-				Log.Information($"Received invite from {user.Username} ({user.Id}) to {Type} {activity2.Name}");
-				Log.Information("The invite can be accepted from within Discord");
+				Log.Information("Received invite from {Username}#{Discriminator} to {Type} {activity2.Name}.", user.Username, user.Discriminator);
+				Log.Information("The invite can be accepted from within Discord.");
 				//Console.WriteLine("OnInvite {0} {1} {2}", Type, user.Username, activity2.Name);
 				// activityManager.AcceptInvite(user.Id, result =>
 				// {
@@ -293,7 +296,7 @@ namespace discordGame
 			path = Path.Combine(Directory.GetParent(path).FullName, "discordGame.exe");
 
 			string launchCommand = $"\"{path}\"";
-			Log.Information($"Registering launchCommand: {launchCommand}");
+			Log.Verbose("Registering launchCommand: {LaunchCommand}", launchCommand);
 			activityManager.RegisterCommand(launchCommand);
 
 			var userManager = discord.GetUserManager();
@@ -304,15 +307,17 @@ namespace discordGame
 			userManager.OnCurrentUserUpdate += () =>
 			{
 				var currentUser = userManager.GetCurrentUser();
-				Console.WriteLine(currentUser.Username);
-				Console.WriteLine(currentUser.Id);
+				Log.Information("Current user is {Username}#{Discriminator} ({Id})", currentUser.Username, currentUser.Discriminator, currentUser.Id);
+
+				//Console.WriteLine(currentUser.Username);
+				//Console.WriteLine(currentUser.Id);
 				currentUserId = currentUser.Id;
 			};
 
 
 			lobbyManager.OnLobbyMessage += (lobbyID, userID, data) =>
 			{
-				Log.Information("Received lobby message: {0} {1}", lobbyID, Encoding.UTF8.GetString(data));
+				Log.Information("Received lobby message: {1}", Encoding.UTF8.GetString(data));
 			};
 			//lobbyManager.OnNetworkMessage += (lobbyId, userId, channelId, data) =>
 			//{
@@ -376,13 +381,13 @@ namespace discordGame
 			//	});
 			//}
 
-			overlayManager.OpenVoiceSettings((result) =>
-			{
-				if (result == Discord.Result.Ok)
-				{
-					Console.WriteLine("Overlay is open to the voice settings for your application");
-				}
-			});
+			//overlayManager.OpenVoiceSettings((result) =>
+			//{
+			//	if (result == Discord.Result.Ok)
+			//	{
+			//		Console.WriteLine("Voice settings overlay has been opened in Discord");
+			//	}
+			//});
 
 			//coordinateReader = new CoordinateReader();
 
@@ -393,7 +398,7 @@ namespace discordGame
 			List<Task> runningTasks = new List<Task>();
 			Task delayingTask = Task.CompletedTask;
 
-			Log.Information("Running callback loop on {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
+			//Log.Information("Running callback loop on {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
 
 			CancellationTokenSource cancelExecLoopSource = new CancellationTokenSource();
 			CancellationToken cancelExecLoop = cancelExecLoopSource.Token;
@@ -408,7 +413,7 @@ namespace discordGame
 			// Pump the event look to ensure all callbacks continue to get fired.
 			try
 			{
-				Console.WriteLine("Running. Press Q to quit.");
+				Log.Information("\x1b[92mRunning! Enter 'quit' to quit.\x1b[0m");
 				int frame = 0;
 				//delayingTask.Status == TaskStatus.Running
 
@@ -620,8 +625,8 @@ namespace discordGame
 				{
 					Task<Coords?> t = client?.coordsReader?.GetCoords();
 
-					Log.Information($"Coords are {(t != null ? await t : null)?.ToString() ?? "null"}");
-					cs.SetResult(true);
+					Log.Information("[CoordinateReader] Coords are {PrintedCoords}.", (t != null ? await t : null)?.ToString() ?? "null");
+					cs.TrySetResult(true);
 				});
 				await cs.Task;				
 				await Task.Delay(TimeSpan.FromSeconds(30), tok);

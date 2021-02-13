@@ -35,11 +35,14 @@ namespace discordGame
 			currentTask = Task.CompletedTask;
 
 			DoInit();
+			Log.Information("[Party] Lobby setup finished.");
 		}
 
 		public static async Task<VoiceLobby> FromSecret(string secret)
 		{
-			Log.Information("From secret on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
+			//Log.Information("From secret on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
+			Log.Information("[Party] Joining lobby from secret.");
+
 			//Console.WriteLine("OnJoin {0}", secret);
 			Discord.LobbyManager lobbyManager = Program.lobbyManager;
 
@@ -47,19 +50,19 @@ namespace discordGame
 
 			lobbyManager.ConnectLobbyWithActivitySecret(secret, (Discord.Result result, ref Discord.Lobby lobby) =>
 			{
-				Log.Information($"Connected to lobby {lobby.Id}");
+				//Log.Information($"Connected to lobby {lobby.Id}");
 				completionSource.SetResult(new VoiceLobby(lobby));
 			});
 
 			VoiceLobby result = await completionSource.Task;
-			result.PrintMetadata();
+			//result.PrintMetadata();
 			result.PrintUsers();
 			return result;
 		}
 
 		public static async Task<VoiceLobby> Create()
 		{
-			Log.Information("Creating on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
+			//Log.Information("Creating on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
 			Discord.LobbyManager lobbyManager = Program.lobbyManager;
 
 			// Create a lobby.
@@ -79,7 +82,9 @@ namespace discordGame
 					return;
 				}
 
-				Console.WriteLine("Created lobby {0} with capacity {1} and secret {2}", lobby.Id, lobby.Capacity, lobby.Secret);
+				Log.Information("[Party] Created lobby with id {LobbyId}. Capacity is {Capacity}, secret is {Secret}.", lobby.Id, lobby.Capacity, lobby.Secret);
+
+				//Log.Information("Created lobby {LobbyId} with capacity {Capacity} and secret {Secret}", lobby.Id, lobby.Capacity, lobby.Secret);
 
 				completionSource.SetResult(lobby);
 			});
@@ -92,8 +97,8 @@ namespace discordGame
 
 		public async Task Disconnect()
 		{
-			Log.Information("Disconnecting on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
-			Log.Information("Disconnecting from lobby {LobbyId}", lobby.Id);
+			//Log.Information("Disconnecting on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
+			Log.Information("[Party] Disconnecting from lobby {LobbyId}", lobby.Id);
 			Task a = currentTask.ContinueWith((prev) =>
 			{
 				Program.nextTasks.Enqueue(async () =>
@@ -101,7 +106,7 @@ namespace discordGame
 					TaskCompletionSource<bool> completionSource = new TaskCompletionSource<bool>();
 					lobbyManager.DisconnectLobby(lobby.Id, (Discord.Result result) =>
 					{
-						completionSource.SetResult(result == Discord.Result.Ok);
+						completionSource.TrySetResult(result == Discord.Result.Ok);
 					});
 					await completionSource.Task;
 					//return true;
@@ -115,12 +120,13 @@ namespace discordGame
 
 		void DoInit()
 		{
-			Log.Information("Doing init on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
+			//Log.Information("Doing init on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
 
 			connVoiceHandler = (res) =>
 			{
 				//Console.WriteLine($"Connected to voice chat! Result was: {_}");
-				Log.Information("Connected to voice chat! Result was {Result}. (Lobby {LobbyId})", res, lobby.Id);
+				//Log.Information("Connected to voice chat! Result was {Result}. (Lobby {LobbyId})", res, lobby.Id);
+				Log.Information("[Party] Voice chat is now connected. Result was {Result}. (Lobby {LobbyId})", res, lobby.Id);
 			};
 
 			//// Connect to voice chat.
@@ -133,7 +139,7 @@ namespace discordGame
 			// Connect to voice chat.
 			lobbyManager.ConnectVoice(lobby.Id, connVoiceHandler);
 
-			Log.Information("Connecting to network. (Lobby {LobbyId})", lobby.Id);
+			//Log.Information("[Party] Connecting to network. (Lobby {LobbyId})", lobby.Id);
 			lobbyManager.ConnectNetwork(lobby.Id);
 			//Log.Information("Opening channel. (Lobby {LobbyId})", lobby.Id);
 
@@ -211,8 +217,13 @@ namespace discordGame
 		{
 			Program.nextTasks.Enqueue(async () =>
 			{
+				UserResult user = await UserResult.GetUser(userId);
+				if (user.result == Discord.Result.Ok)
+					Log.Information("[Party] User {Username}#{Discriminator} has connected to the lobby. (Lobby {LobbyId})", user.user.Username, user.user.Discriminator, lobbyId);
+				else
+					Log.Information("[Party] User {UserId} has connected to the lobby. (Lobby {LobbyId})", userId, lobbyId);
+
 				//Log.Information("User {0} ({1}) has connected to the lobby! (Lobby {2})", await GetFriendlyUsername(userId), userId, lobby.Id);
-				Log.Information("User {UserFriendlyName} ({UserId}) has connected to the lobby! (Lobby {LobbyId})", await GetFriendlyUsername(userId), userId, lobbyId);
 				PrintUsers();
 			});
 			//Console.WriteLine($"Lobby {this.lobby.Id}: Connect from {userId} ({await GetFriendlyUsername(userId)})");
@@ -222,8 +233,17 @@ namespace discordGame
 		{
 			Program.nextTasks.Enqueue(async () =>
 			{
+				UserResult user = await UserResult.GetUser(userId);
+				if (user.result == Discord.Result.Ok)
+					Log.Information("[Party] User {Username}#{Discriminator} has disconnected from the lobby. (Lobby {LobbyId})", user.user.Username, user.user.Discriminator, lobbyId);
+				else
+					Log.Information("[Party] User {UserId} has disconnected from the lobby. (Lobby {LobbyId})", userId, lobbyId);
+
+				//Log.Information("User {0} ({1}) has connected to the lobby! (Lobby {2})", await GetFriendlyUsername(userId), userId, lobby.Id);
+
+
 				//Log.Information("User {0} ({1}) has disconnected from the lobby! (Lobby {2})", await GetFriendlyUsername(userId), userId, lobby.Id);
-				Log.Information("User {UserFriendlyName} ({UserId}) has disconnected from the lobby. (Lobby {LobbyId})", await GetFriendlyUsername(userId), userId, lobbyId);
+				//Log.Information("User {UserFriendlyName} ({UserId}) has disconnected from the lobby. (Lobby {LobbyId})", await GetFriendlyUsername(userId), userId, lobbyId);
 				PrintUsers();
 			});
 			//Console.WriteLine($"Lobby {this.lobby.Id}: Disconnect from {userId} ({await GetFriendlyUsername(userId)})");
@@ -231,14 +251,14 @@ namespace discordGame
 
 		public void PrintUsers()
 		{
-			Console.WriteLine("Lobby members:");
+			List<string> li = new List<string> { "Lobby members:" };
+
 			foreach (var user in Program.lobbyManager.GetMemberUsers(lobby.Id))
 			{
-				//Console.WriteLine("lobby member: {0}", user.Username);
-
-				Console.WriteLine($"  {user.Username}#{user.Discriminator} ({user.Id})");
+				li.Add($"  {user.Username}#{user.Discriminator} ({user.Id})");
 			}
-			Console.WriteLine();
+			string ans = string.Join('\n', li) + "\n";
+			Log.Information(ans);
 		}
 
 		public IEnumerable<Discord.User> GetMembers()
@@ -282,14 +302,14 @@ namespace discordGame
 			Console.WriteLine();
 		}
 
-		public void SendLobbyMessage()
-		{
-			// Send everyone a message.
-			lobbyManager.SendLobbyMessage(lobby.Id, "Hi there!", (result) =>
-			{
-				Console.WriteLine($"Lobby message has been sent ({result})");
-			});
-		}
+		//public void SendLobbyMessage()
+		//{
+		//	// Send everyone a message.
+		//	lobbyManager.SendLobbyMessage(lobby.Id, "Hi there!", (result) =>
+		//	{
+		//		Console.WriteLine($"Lobby message has been sent ({result})");
+		//	});
+		//}
 
 		//void UpdateMember(string id, )
 
@@ -310,7 +330,7 @@ namespace discordGame
 
 				Program.discord.GetUserManager().GetUser(id, (Discord.Result result, ref Discord.User user) =>
 				{
-					completionSource.SetResult(new UserResult(result, user));
+					completionSource.TrySetResult(new UserResult(result, user));
 				});
 				UserResult userResult = await completionSource.Task;
 
@@ -318,22 +338,29 @@ namespace discordGame
 			}
 		}
 
-		public async Task<string> GetFriendlyUsername(long playerId)
+		public async Task<string> GetFriendlyUsername(long userId)
 		{
 			//Log.Information("Getting Friendly Username on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
 			//Log.Information("Blocking for 5 seconds");
 			//Thread.Sleep(5000);
 			//Log.Information("Done blocking");
 
-			UserResult res = await UserResult.GetUser(playerId);
-			if (res.result == Discord.Result.Ok)
-			{
-				return res.user.Username;
-			}
+			UserResult user = await UserResult.GetUser(userId);
+			if (user.result == Discord.Result.Ok)
+				return $"{user.user.Username}#{user.user.Discriminator}";
 			else
-			{
-				return $"{playerId} (Couldn't obtain username: {res.result})";
-			}
+				return $"{userId}";
+				//Log.Information("[Party] User {UserId} has connected to the lobby. (Lobby {LobbyId})", userId, lobbyId);
+
+			//UserResult res = await UserResult.GetUser(playerId);
+			//if (res.result == Discord.Result.Ok)
+			//{
+			//	return res.user.Username;
+			//}
+			//else
+			//{
+			//	return $"{playerId} (Couldn't obtain username: {res.result})";
+			//}
 			//Task<UserResult> usernameGet = UserResult.GetUser(playerId);
 			//UserResult res = usernameGet.Result;
 			//if (res.result == Discord.Result.Ok)
@@ -356,7 +383,7 @@ namespace discordGame
 				{
 					//Console.WriteLine("lobby member has been updated: {0}", lobbyManager.GetMemberMetadataValue(lobbyID, userID, "hello"));
 					string playerName = await GetFriendlyUsername(playerId);
-					Console.WriteLine($"Set {playerId} dead status to ${isDead}");
+					Log.Information($"Set {playerId} dead status to ${isDead}");
 				});
 			});
 			await Task.CompletedTask;
@@ -435,7 +462,11 @@ namespace discordGame
 
 			activityManager.UpdateActivity(activity, result =>
 			{
-				Console.WriteLine("Updated activity {0}", result);
+				//Console.WriteLine("Updated activity {0}", result);
+				if (result == Discord.Result.Ok)
+					Log.Information("[Party] Activity has been updated.");
+				else
+					Log.Error("[Party] Failed to set activity. Result code was {Res}.", result);
 
 				// Send an invite to another user for this activity.
 				// Receiver should see an invite in their DM.

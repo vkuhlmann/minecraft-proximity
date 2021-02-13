@@ -46,6 +46,7 @@ namespace discordGame
 
 		public LogicServer(VoiceLobby voiceLobby)
 		{
+			Log.Information("[Server] Initializing server...");
 			this.voiceLobby = voiceLobby;
 			playersMap = new Dictionary<long, ServerPlayer>();
 			transmitsProcessing = new ConcurrentQueue<bool>();
@@ -67,7 +68,7 @@ namespace discordGame
 				foreach (string import in imports)
 				{
 					modules[import] = scope.Import(import);
-					Console.WriteLine($"Imported {import}");
+					//Console.WriteLine($"Imported {import}");
 				}
 
 				dynamic mod = modules["logicserver"];
@@ -79,7 +80,7 @@ namespace discordGame
 
 			cancelTransmitTask = new CancellationTokenSource();
 			transmitTask = DoRecalcLoop(cancelTransmitTask.Token);
-
+			Log.Information("[Server] Initialization done.");
 		}
 
 		public void Stop()
@@ -325,7 +326,7 @@ namespace discordGame
 					{
 						foreach ((long userId, List<(long, float)> li) in ans)
 							SetUserVolumes(playersMap[userId], li);
-						completionSource.SetResult(true);
+						completionSource.TrySetResult(true);
 						await Task.CompletedTask;
 					});
 					await completionSource.Task;

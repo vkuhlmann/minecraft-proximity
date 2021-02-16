@@ -11,7 +11,8 @@ using System.Collections.Concurrent;
 using Python.Included;
 using Python.Runtime;
 using System.Text.RegularExpressions;
-
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 // Use and distribution of this program requires compliance with https://dotnet.microsoft.com/en/dotnet_library_license.htm
 // As per necessary by some dependencies.
@@ -178,8 +179,53 @@ namespace discordGame
 
 		static async Task RunAsync(string[] args)
 		{
-			Console.WriteLine("Use of this program is subject to the following licenses:");
+			const float presentTermVersion = 1.0f;
 
+			float agreedTermsVersion = 0.0f;
+
+			JObject configFile = null;
+			if (File.Exists("config.json"))
+			{
+				string configFileContent = File.ReadAllText("config.json");
+				configFile = JObject.Parse(configFileContent);
+				JToken propAgreedTermsVersion = configFile["agreedTermsVersion"];
+				if (propAgreedTermsVersion != null && propAgreedTermsVersion.Type == JTokenType.Float)
+					agreedTermsVersion = propAgreedTermsVersion.Value<float>();
+			}
+
+			if (agreedTermsVersion != presentTermVersion) {
+				if (agreedTermsVersion != 0.0f)
+					Console.WriteLine("The terms or privacy policy has been updated.");
+
+				Console.WriteLine("Yes, legal things... *sigh*");
+				Console.WriteLine("Use of this program is subject to the term set forward in LICENSES.txt and to privacyPolicy.txt");
+				Console.Write("Do you agree to these terms and to the privacy policy? (Y/N) ");
+				while (true)
+				{
+					ConsoleKeyInfo keyInfo = Console.ReadKey(true);
+					if (keyInfo.KeyChar == 'y' || keyInfo.KeyChar == 'Y')
+					{
+						Console.WriteLine("Y");
+						agreedTermsVersion = presentTermVersion;
+						break;
+					} else if (keyInfo.KeyChar == 'n' || keyInfo.KeyChar == 'N')
+					{
+						Console.WriteLine("N");
+						Console.WriteLine("This program requires these conditions and has hence terminated.");
+						Console.WriteLine("Press any key to quit");
+						Console.ReadKey(true);
+						return;
+					}
+
+				}
+
+				if (configFile == null)
+					configFile = new JObject();
+				configFile["agreedTermsVersion"] = agreedTermsVersion;
+				File.WriteAllText("config.json", configFile.ToString());
+				Console.WriteLine("The choice is saved in the config file");
+				Console.WriteLine();
+			}
 
 			nextTasks = new ConcurrentQueue<Func<Task>>();
 			client = null;
@@ -549,6 +595,8 @@ namespace discordGame
 				discord.Dispose();
 			}
 
+			Console.WriteLine("The program has terminated. Press any key to quit.");
+			Console.ReadKey();
 			//await a;
 		}
 

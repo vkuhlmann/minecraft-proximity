@@ -8,129 +8,104 @@ collected is exclusively done so in the context of providing this service.
 
 This privacy policy is represented by Vincent Kuhlmann, reachable via
 vincent [dot] kuhlmann [at] hotmail [dot] com. This program doesn't really
-collect any personal information, however the Discord Terms of Service require
-me to provide a Privacy Policy anyway.
+collect any personal information, however the Discord Developer Terms of Service
+require me to provide a privacy policy anyway.
 
-The words "I", "me", "my", "we", "our", "us" refer to Vincent Kuhlmann.
-"Software", "this software", "the software" or plainly "software" refers to the
-software provided in the reposity of Minecraft Proximity Chat, available here
-as
-https://github.com/vkuhlmann/minecraft-proximity
+Any definitions from LICENSES.txt may be used from here on.
 
-1. What data do we collect?
----------------------------
+
+  What data do we collect?
+----------------------------
 
 The Software integrates with certain Discord API's. Consequently, using the
-Software can invoke Discord collecting data, as already accepted by Discord
-users, and outlined in Discord's privacy policy, e.g. accessable via
-https://discord.com/privacy.
+Software can invoke Discord collecting data, as outlined in Discord's privacy
+policy, e.g. accessable via https://discord.com/privacy. The Software may
+collect and use any data for the sole purpose, and to the bare extent, the
+Discord Developer Terms of Service requires me.
 
-I do not collect any data from you.
+Note using this Software is under certain licenses, among which
+https://dotnet.microsoft.com/en/dotnet_library_license.htm
+Use of the Software hence also entails the privacy statement put forward in that
+license.
+
+**
+I do not collect any data from you through the Software.
+**
+
+The Software may communicate through the Discord API's to people who participate
+in a Discord activity associated with the Software. Note the Software does not
+provide any conditions on how the recipient may use this data. Of course,
+Discord policies and laws might still protect you.
+
+This data* is mainly comprised of configuration, public identifiers, and
+Minecraft coordinates. Also, if you use a Modified version, be aware additional
+data can be sent along.
+
+
+* I do not consider voice chat as part of this information. The Software doesn't
+manage, nor see, any of the voice data. This is entirely on Discord's part.
 
 ================================================================================
+
+This next part does not concern data collection by me. Hence it is not part of
+the privacy policy, and can be removed without further notice.
 
 If you are interested in how the Software collects and uses any information
 (again, not involving me), read on:
 
+"Storing locally" means the data is confined to any file system your host
+machine provides, in addition to Discord API's that can store private data.
+Here a location is considered "private" if, in usual circumstances, visibility
+is restricted to your host machine or as private account data in Discord. Any
+such consideration can be solely based on documentation provided by Discord.
+
 The following data can be used by the Software:
 (1) Username and user customization you provided.
-    - Stored only locally, and can be communicated through Discord API's as your
-	  profile status and to people who participate in an Discord activity
-	  associated with the Software.
+    (a) Stored only locally, and can be communicated through Discord API's as
+	    your profile status and to people who participate in a Discord activity
+	    associated with the Software.
 
 (2) Configuration data you provided.
-	- Stored only locally, and can be communicated through Discord API's as your
-	  profile status and to people who participate in an Discord activity
-	  associated with the Software.
+	(a) Stored only locally, and can be communicated through Discord API's as
+	    your profile status and to people who participate in a Discord activity
+	    associated with the Software.
 
 (3) Discord profile information
-    - Stored only locally, and can be communicated through Discord API's as your
-	  profile status and to people who participate in an Discord activity
-	  associated with the Software.
-	
+    (a) Stored only locally, and can be communicated through Discord API's as
+	    your profile status and to people who participate in a Discord activity
+	    associated with the Software.
+
 (4) Screen captures
-    - Immediately discarded after being processed, which is usually within a
-	  second of it being taken.
-	- The capture is used for the sole purpose of obtaining Minecraft
-	  coordinates, or any other information displayed on the Minecraft client
-	  relevant to providing the service.
-	- The extracted data as described in the point above can be communicated
-	  through Discord API's to people who who participate in an Discord activity
-	  associated with the Software.
+    (a) Immediately discarded after being processed, which is usually within a
+	    second of it being taken.
+	(b) The capture is used for the sole purpose of obtaining Minecraft
+	    coordinates, or any other information displayed on the Minecraft client
+	    relevant to providing the service.
+	(c) The extracted data as described in (b) can be stored locally.
+	(d) The extracted data as described in (b) can be communicated through
+	    Discord API's to people who participate in an Discord activity
+	    associated with the Software. Note any recipient in this scheme has,
+		regarding this extracted data, no restrictions put forward under any
+		terms adhering to the Software about the handling or use of the data.
+    (e) The extraction is done with quite stringent parsing. Still, don't
+	    provoke it by doing things like showing your credit card number on
+		screen in Minecraft font while you have the application open. These are
+		not the coordinates we want to share.
 
 (5) Voice
-	- The Software can with or without notice, order Discord to connect voice,
-	  which means other members of the activity might hear you, and you might
-	  hear them.
-	- Beware: the global mute setting in Discord might not work for muting.
-	  Please use the feature in the Software to bring up the voice settings
-	  overlay, in which you can change your audio settings.
-	- The Software can't and doesn't access any audio transmitted through
-	  Discord.
-	  
+	(a) The Software can with or without notice, order Discord API's to connect
+	    voice, which means other members of the activity might hear you, and you
+		might hear them.
+	(b) Beware: the global mute setting in Discord might not work for muting.
+	    Please use the feature in the Software to bring up the voice settings
+	    overlay, in which you can change your audio settings.
+	(c) The Software can't and doesn't access any audio transmitted through
+	    Discord.
+
 (6) Voice speaking/non-speaking events
-	- The Discord API can provide binary speaking/non-speaking events for users,
-	  regarding audio connected through the activity. 
-	- Only kept for the runtime duration.
-	
+	(a) The Discord API can provide binary speaking/non-speaking events for
+	    users, regarding audio connected through the activity. 
+	(b) It is kept no longer than the runtime duration.
 
-
-
-The Software can store data locally, and sent it 
-
-[Information you provide.] The Software collects any username, and user
-customization you provided. The Software also collects configuration data you
-provide.
-
-[Data we collect automatically.] The Software can use the following data
-automatically
-* Discord profile information
-* Screen captures
-* Speak/no speak events as provided by the Discord API
-
-2. How will we use your data?
------------------------------
-
-
-
-As to the Software itself, for release versions, no personal data is kept
-beyond runtime. The Software might store configuration, telemetry and debug
-information beyond runtime however. Any data stored, whether for this latter
-sentence, or concerning personal data in non-release versions, is stored only
-on the computer running the program, and/or though any Discord service.
-
-Additionally, the Software uses networking through Discord API's to provide
-its services. The information sent through only includes information directly
-relevant to the gameplay (like player coordinates and player status), in
-addition to any public (or known to the recepient) information. The latter
-can include any form of username or user id.
-
-For the duration of the runtime, the program requires certain data:
-* The Software can order Discord API's to connect voice, whether upon request
-  and/or notice, or automatically. The Software may use Discord API provided
-  events about when someone is speaking. However, it has no access to the actual
-  transmitted voice.
-  
-* The Software 
-
-* The Software can invoke Python scripts for providing of its service. This can
-  include, but is not limited to a script reading Minecraft coordinates of the
-  screen and performing the volume logic. If you modify these scripts, then for
-  any distribution, you must, to any reasonable extent, clarify collection and
-  usage of any personal information.
-
-At runtime, the program may invoke screen capture methods for the sole purpose
-of obtaining Minecraft coordinates. These captures are immediately discarded
-after use, which is usually within a second of it being taken.
-
-2. How do we collect data?
-
-
-
-3. Use of your personal information.
-
-Data retention
---------------
-
-No personal information is collected.
+That's it.
 

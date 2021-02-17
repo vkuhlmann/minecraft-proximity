@@ -79,7 +79,7 @@ namespace discordGame
                 measureEnd = Environment.TickCount64;
 
                 float durMs = (float)stopwatch.ElapsedMilliseconds / Math.Max(1, requests);
-                //Log.Information("Coords getting takes {DurMs:F2} ms on average ({Req} requests completed)", durMs, requests);
+                Log.Information("Coords getting takes {DurMs:F2} ms on average ({Req} requests completed)", durMs, requests);
 
                 stopwatch.Reset();
                 requests = 0;

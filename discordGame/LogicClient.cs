@@ -37,7 +37,7 @@ namespace discordGame
         VoiceLobby voiceLobby;
         Dictionary<long, Player> players;
 
-        public CoordinateReader coordsReader { get; protected set; }
+        public ICoordinateReader coordsReader { get; protected set; }
 
         Coords coords;
         long serverUser;
@@ -54,7 +54,8 @@ namespace discordGame
         {
             this.voiceLobby = voiceLobby;
 
-            coordsReader = new CoordinateReader();
+            //coordsReader = new CoordinateReader();
+            coordsReader = new CoordinateReaderSharp();
             serverUser = -1;
             ownUserId = Program.currentUserId;
             sendCoordsInterval = TimeSpan.FromMilliseconds(240);

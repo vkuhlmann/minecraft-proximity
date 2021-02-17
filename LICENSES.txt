@@ -75,3 +75,7 @@ Apache-2.0 License - (c) 2020 Serilog Contributors
 Microsoft Software License Terms: Microsoft .NET library
   [See license at https://dotnet.microsoft.com/en/dotnet_library_license.htm]
 
+MIT License - (c) 2021 Microsoft
+  [System.Drawing.Common as provided by NuGet]
+  [See license at https://licenses.nuget.org/MIT]
+

@@ -90,7 +90,17 @@ namespace discordGame
                 cancelTransmitTask.Cancel();
                 try
                 {
-                    transmitTask.Wait();
+                    try
+                    {
+                        transmitTask.Wait();
+                    }
+                    catch (AggregateException ex)
+                    {
+                        if (ex.InnerExceptions.Count == 1)
+                            throw ex.InnerExceptions[0];
+                        else
+                            throw ex;
+                    }
                 }
                 catch (TaskCanceledException) { }
                 catch (Exception ex)
@@ -293,13 +303,13 @@ namespace discordGame
             {
                 Log.Information("Starting server loop");
                 long ticks = Environment.TickCount64;
-                TimeSpan sendInterval = TimeSpan.FromMilliseconds(250);
+                TimeSpan sendInterval = TimeSpan.FromMilliseconds(100);
                 long sendIntervalTicks = (long)sendInterval.TotalMilliseconds;
 
-                TimeSpan minDelay = TimeSpan.FromMilliseconds(10);
+                TimeSpan minDelay = TimeSpan.FromMilliseconds(5);
 
                 long statsStart = Environment.TickCount64;
-                TimeSpan statsInterval = TimeSpan.FromSeconds(5);
+                TimeSpan statsInterval = TimeSpan.FromSeconds(20);
                 long nextStatsTickcount = Environment.TickCount64 + (long)statsInterval.TotalMilliseconds;
                 int submissions = 0;
 
@@ -311,63 +321,70 @@ namespace discordGame
                         a.TrySetCanceled();
                 });
 
-                while (true)
+                try
                 {
-                    completionSource = new TaskCompletionSource<bool>();
-                    ct.ThrowIfCancellationRequested();
-
-                    //while (transmitsProcessing.Count > 0)
-                    //	await Task.Delay(10, ct);
-                    var ans = await CalculateVolumes();
-
-                    //Dictionary<long, float> a;
-                    //SetUserVolumes(null, a.AsEnumerable().Select(it => (it.Key, it.Value)));
-
-                    Program.nextTasks.Enqueue(async () =>
+                    while (true)
                     {
-                        foreach ((long userId, List<(long, float)> li) in ans)
-                            SetUserVolumes(playersMap[userId], li);
-                        completionSource.TrySetResult(true);
-                        await Task.CompletedTask;
-                    });
-                    await completionSource.Task;
+                        completionSource = new TaskCompletionSource<bool>();
+                        ct.ThrowIfCancellationRequested();
 
-                    volumesStores.Enqueue(ans);
+                        //while (transmitsProcessing.Count > 0)
+                        //	await Task.Delay(10, ct);
+                        var ans = await CalculateVolumes();
 
-                    submissions++;
+                        //Dictionary<long, float> a;
+                        //SetUserVolumes(null, a.AsEnumerable().Select(it => (it.Key, it.Value)));
 
-                    await Task.Delay(minDelay, ct);
-                    if (Environment.TickCount64 > nextStatsTickcount)
-                    {
-                        long timesp = Environment.TickCount64 - statsStart;
-                        float rate = submissions / (timesp / 1000.0f);
-                        Log.Information("Server: {Rate:F2} submissions per second", rate);
+                        Program.nextTasks.Enqueue(async () =>
+                        {
+                            foreach ((long userId, List<(long, float)> li) in ans)
+                                SetUserVolumes(playersMap[userId], li);
+                            completionSource.TrySetResult(true);
+                            await Task.CompletedTask;
+                        });
+                        await completionSource.Task;
 
-                        statsStart = Environment.TickCount64;
-                        nextStatsTickcount = statsStart + (long)statsInterval.TotalMilliseconds;
-                        submissions = 0;
-                    }
+                        volumesStores.Enqueue(ans);
 
-                    long nowTicks = Environment.TickCount64;
-                    if (nowTicks > ticks + sendIntervalTicks)
-                    {
-                        if (nowTicks > ticks + sendIntervalTicks * 3)
-                            ticks = nowTicks;
+                        submissions++;
+
+                        await Task.Delay(minDelay, ct);
+                        if (Environment.TickCount64 > nextStatsTickcount)
+                        {
+                            long timesp = Environment.TickCount64 - statsStart;
+                            float rate = submissions / (timesp / 1000.0f);
+                            Log.Information("[Server] Update rate: {Rate:F2} per second", rate);
+
+                            statsStart = Environment.TickCount64;
+                            nextStatsTickcount = statsStart + (long)statsInterval.TotalMilliseconds;
+                            submissions = 0;
+                        }
+
+                        long nowTicks = Environment.TickCount64;
+                        if (nowTicks > ticks + sendIntervalTicks)
+                        {
+                            if (nowTicks > ticks + sendIntervalTicks * 3)
+                                ticks = nowTicks;
+                            else
+                                ticks += sendIntervalTicks;
+                        }
                         else
+                        {
+                            await Task.Delay((int)(ticks + sendIntervalTicks - nowTicks), ct);
                             ticks += sendIntervalTicks;
+                        }
+                        //await Task.Delay(TimeSpan.FromSeconds(0.24), ct);
                     }
+                }
+                catch (AggregateException ex)
+                {
+                    if (ex.InnerExceptions.Count == 1)
+                        throw ex.InnerExceptions[0];
                     else
-                    {
-                        await Task.Delay((int)(ticks + sendIntervalTicks - nowTicks), ct);
-                        ticks += sendIntervalTicks;
-                    }
-                    //await Task.Delay(TimeSpan.FromSeconds(0.24), ct);
+                        throw ex;
                 }
             }
-            catch (TaskCanceledException ex)
-            {
-                throw ex;
-            }
+            catch (TaskCanceledException) { }
             catch (Exception ex)
             {
                 Log.Error("Error on server loop: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);

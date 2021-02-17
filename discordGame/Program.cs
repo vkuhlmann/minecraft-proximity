@@ -127,6 +127,7 @@ namespace discordGame
 
             client?.Stop();
             client = new LogicClient(currentLobby);
+            DoHost();
         }
 
         static async Task SetupPython()
@@ -602,6 +603,13 @@ namespace discordGame
             //await a;
         }
 
+        public static void DoHost()
+        {
+            server?.Stop();
+            server = new LogicServer(currentLobby);
+            server.AdvertiseHost();
+        }
+
         static async Task ExecuteCommand(string s)
         {
             Match m;
@@ -619,10 +627,7 @@ namespace discordGame
             }
             else if (s == "doHost")
             {
-                server?.Stop();
-                server = new LogicServer(currentLobby);
-                server.AdvertiseHost();
-
+                DoHost();
             }
             else if ((m = Regex.Match(s, "screen (?<screenNum>[+-]?[\\d+])")).Success)
             {

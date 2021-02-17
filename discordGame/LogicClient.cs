@@ -58,7 +58,8 @@ namespace discordGame
             coordsReader = new CoordinateReaderSharp();
             serverUser = -1;
             ownUserId = Program.currentUserId;
-            sendCoordsInterval = TimeSpan.FromMilliseconds(240);
+            //sendCoordsInterval = TimeSpan.FromMilliseconds(240);
+            sendCoordsInterval = TimeSpan.FromMilliseconds(1000 / 12);
             //transmitsProcessing = new ConcurrentQueue<bool>();
 
             this.voiceLobby.onMemberConnect += VoiceLobby_onMemberConnect;
@@ -112,7 +113,23 @@ namespace discordGame
 
         private void VoiceLobby_onMemberDisconnect(long lobbyId, long userId)
         {
+            if (serverUser == userId)
+                serverUser = -1;
             RefreshPlayers();
+
+            if (serverUser == -1)
+            {
+                long smallestUserId = Program.currentUserId;
+                foreach (long id in players.Keys)
+                {
+                    if (id == userId)
+                        continue;
+                    smallestUserId = Math.Min(smallestUserId, id);
+                }
+
+                if (smallestUserId == Program.currentUserId)
+                    Program.DoHost();
+            }
         }
 
         private void VoiceLobby_onNetworkJson(long sender, byte channel, JObject jObject)
@@ -129,12 +146,18 @@ namespace discordGame
         public void RefreshPlayers()
         {
             Dictionary<long, Player> newPlayers = new Dictionary<long, Player>();
+            //long smallestUserId = Program.currentUserId;
+
             foreach (Discord.User user in voiceLobby.GetMembers())
             {
                 Player pl = new Player(user.Id, user.Username);
                 newPlayers[user.Id] = pl;
+                //smallestUserId = Math.Min(smallestUserId, user.Id);
             }
             players = newPlayers;
+
+            //if (serverUser == -1 && smallestUserId == Program.currentUserId)
+            //    Program.DoHost();
         }
 
         //public async Task ReceiveNetworkMessage(byte[] message)
@@ -234,10 +257,10 @@ namespace discordGame
                 long ticks = Environment.TickCount64;
                 long sendIntervalTicks;
 
-                TimeSpan minDelay = TimeSpan.FromMilliseconds(10);
+                TimeSpan minDelay = TimeSpan.FromMilliseconds(1);
 
                 long statsStart = Environment.TickCount64;
-                TimeSpan statsInterval = TimeSpan.FromSeconds(5);
+                TimeSpan statsInterval = TimeSpan.FromSeconds(20);
                 long nextStatsTickcount = Environment.TickCount64 + (long)statsInterval.TotalMilliseconds;
                 int submissions = 0;
                 int successes = 0;
@@ -250,62 +273,70 @@ namespace discordGame
                         a.TrySetCanceled();
                 });
 
-                while (true)
+                try
                 {
-                    completionSource = new TaskCompletionSource<bool>();
-
-                    ct.ThrowIfCancellationRequested();
-                    //while (transmitsProcessing.Count > 0)
-                    //	await Task.Delay(10, ct);
-
-                    Program.nextTasks.Enqueue(async () =>
+                    while (true)
                     {
-                        completionSource.TrySetResult(await SendCoordinates());
-                    });
-                    bool success = await completionSource.Task;
+                        completionSource = new TaskCompletionSource<bool>();
 
-                    //bool success = await SendCoordinates();
+                        ct.ThrowIfCancellationRequested();
 
-                    submissions++;
-                    if (success)
-                        successes++;
+                        //while (transmitsProcessing.Count > 0)
+                        //	await Task.Delay(10, ct);
 
-                    await Task.Delay(minDelay, ct);
-                    if (Environment.TickCount64 > nextStatsTickcount)
-                    {
-                        long timesp = Environment.TickCount64 - statsStart;
-                        float rate = submissions / ((float)timesp / 1000.0f);
-                        float successRate = successes / Math.Max(1.0f, submissions);
-                        Log.Information("[Client] Coordinate submission attempts: {Rate:F2} per second. Success: {SuccessPerc:F1}%", rate, successRate * 100.0f);
+                        Program.nextTasks.Enqueue(async () =>
+                        {
+                            completionSource.TrySetResult(await SendCoordinates());
+                        });
+                        bool success = await completionSource.Task;
 
-                        statsStart = Environment.TickCount64;
-                        nextStatsTickcount = statsStart + (long)statsInterval.TotalMilliseconds;
-                        submissions = 0;
-                        successes = 0;
-                    }
+                        //bool success = await SendCoordinates();
 
-                    sendIntervalTicks = (long)sendCoordsInterval.TotalMilliseconds;
+                        submissions++;
+                        if (success)
+                            successes++;
 
-                    long nowTicks = Environment.TickCount64;
-                    if (nowTicks > ticks + sendIntervalTicks)
-                    {
-                        if (nowTicks > ticks + sendIntervalTicks * 3)
-                            ticks = nowTicks;
+                        await Task.Delay(minDelay, ct);
+                        if (Environment.TickCount64 > nextStatsTickcount)
+                        {
+                            long timesp = Environment.TickCount64 - statsStart;
+                            float rate = submissions / ((float)timesp / 1000.0f);
+                            float successRate = successes / Math.Max(1.0f, submissions);
+                            Log.Information("[Client] Coordinate submission attempts: {Rate:F2} per second. Success: {SuccessPerc:F1}%", rate, successRate * 100.0f);
+
+                            statsStart = Environment.TickCount64;
+                            nextStatsTickcount = statsStart + (long)statsInterval.TotalMilliseconds;
+                            submissions = 0;
+                            successes = 0;
+                        }
+
+                        sendIntervalTicks = (long)sendCoordsInterval.TotalMilliseconds;
+
+                        long nowTicks = Environment.TickCount64;
+                        if (nowTicks >= ticks + sendIntervalTicks)
+                        {
+                            if (nowTicks > ticks + sendIntervalTicks * 5)
+                                ticks = nowTicks - sendIntervalTicks;
+                            else
+                                ticks += sendIntervalTicks;
+                        }
                         else
+                        {
+                            await Task.Delay((int)(ticks + sendIntervalTicks - nowTicks), ct);
                             ticks += sendIntervalTicks;
+                        }
+                        //await Task.Delay(sendCoordsInterval, ct);
                     }
+                }
+                catch (AggregateException ex)
+                {
+                    if (ex.InnerExceptions.Count == 1)
+                        throw ex.InnerExceptions[0];
                     else
-                    {
-                        await Task.Delay((int)(ticks + sendIntervalTicks - nowTicks), ct);
-                        ticks += sendIntervalTicks;
-                    }
-                    //await Task.Delay(sendCoordsInterval, ct);
+                        throw ex;
                 }
             }
-            catch (TaskCanceledException ex)
-            {
-                throw ex;
-            }
+            catch (TaskCanceledException) { }
             catch (Exception ex)
             {
                 Log.Error("Error on send coordinates loop: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);

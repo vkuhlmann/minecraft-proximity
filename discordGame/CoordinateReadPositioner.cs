@@ -26,7 +26,7 @@ namespace discordGame
         {
             HashSet<Positioning> exploredPositions = new HashSet<Positioning>();
 
-            foreach (Color c in new Color[] { ORANGE_COLOR, GRAY_COLOR })
+            foreach (Color c in new Color[] { GRAY_COLOR, ORANGE_COLOR })
             {
                 int scale = 4;
                 for (int mod = 0; mod < scale; mod++)

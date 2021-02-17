@@ -28,6 +28,9 @@ namespace discordGame
         TimeSpan calibrateTimeout;
         long nextAllowedCalibrate;
 
+        long nextNotCalibratedWarning;
+        TimeSpan notCalibratedWarningTimeout;
+
         Regex coordsExtractRegex;        
 
         public CoordinateReaderSharp()
@@ -39,6 +42,9 @@ namespace discordGame
 
             calibrateTimeout = TimeSpan.FromSeconds(5);
             nextAllowedCalibrate = Environment.TickCount64;
+
+            nextNotCalibratedWarning = Environment.TickCount64;
+            notCalibratedWarningTimeout = TimeSpan.FromSeconds(10);
 
             stopwatch = new Stopwatch();
             measureDur = TimeSpan.FromSeconds(5);
@@ -58,7 +64,7 @@ namespace discordGame
                 measureEnd = Environment.TickCount64;
 
                 float durMs = (float)stopwatch.ElapsedMilliseconds / Math.Max(1, requests);
-                Log.Information("Coords getting takes {DurMs:F2} ms on average ({Req} requests completed)", durMs, requests);
+                //Log.Information("[CoordinateReader] Coords getting takes {DurMs:F2} ms on average ({Req} requests completed)", durMs, requests);
 
                 stopwatch.Reset();
                 requests = 0;
@@ -80,11 +86,16 @@ namespace discordGame
 
                     if (c != null)
                         return Task.FromResult(c);
+
+                    Log.Warning("[CoordinateReader] Lost coordinates calibration");
+                    nextNotCalibratedWarning = Environment.TickCount64 + (long)notCalibratedWarningTimeout.TotalMilliseconds;
                 }
 
                 if (Environment.TickCount64 >= nextAllowedCalibrate)
                 {
-                    Log.Information("[CoordinateReader] Calibrating!");
+                    nextAllowedCalibrate = Environment.TickCount64 + (long)calibrateTimeout.TotalMilliseconds;
+
+                    //Log.Information("[CoordinateReader] Calibrating!");
                     Rectangle screenBounds = new Rectangle(0, 0, 1920, 1080);
 
                     if (bitmap.Width < screenBounds.Width || bitmap.Height < screenBounds.Height)
@@ -99,6 +110,7 @@ namespace discordGame
                     }
 
                     graphics.CopyFromScreen(new Point(screenBounds.X, screenBounds.Y), new Point(0, 0), screenBounds.Size, CopyPixelOperation.SourceCopy);
+
                     //Rectangle bounds = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
                     Rectangle bitmapBounds = new Rectangle(new Point(0, 0), screenBounds.Size);
 
@@ -115,7 +127,16 @@ namespace discordGame
                         //Console.WriteLine($"Read [{s}]");
                         Coords? c = TryReadCoords(bitmap, new Point(screenBounds.X, screenBounds.Y));
                         if (c != null)
+                        {
+                            Log.Information("[CoordinateReader] Acquired coordinates calibration");
                             return Task.FromResult(c);
+                        }
+                    }
+
+                    if (Environment.TickCount64 > nextNotCalibratedWarning)
+                    {
+                        nextNotCalibratedWarning = Environment.TickCount64 + (long)notCalibratedWarningTimeout.TotalMilliseconds;
+                        Log.Information("[CoordinateReader] Can't read coordinates!");
                     }
                     //bitmap.Save("testimageAnnotated.png");
                 }

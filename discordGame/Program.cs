@@ -8,8 +8,7 @@ using System.Threading.Tasks;
 using Serilog;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
-using Python.Included;
-using Python.Runtime;
+
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -107,8 +106,6 @@ namespace discordGame
         static bool createLobby = true;
         static bool isQuitRequested = false;
 
-        public static Task pythonSetupTask;
-
         static async Task createLobbyIfNone()
         {
             if (!createLobby || currentLobby != null)
@@ -130,53 +127,6 @@ namespace discordGame
             DoHost();
         }
 
-        static async Task SetupPython()
-        {
-            //string libPath = @"D:\Projects\minecraft-proximity";
-            DirectoryInfo assemblyDir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);
-            DirectoryInfo dir = assemblyDir;
-            while (dir != null)
-            {
-                if (File.Exists(Path.Combine(dir.FullName, "coordinatereader.py")))
-                    break;
-                dir = dir.Parent;
-            }
-
-            string libPath;
-            if (dir != null)
-                libPath = dir.FullName;
-            else
-                libPath = assemblyDir.FullName;
-
-            Log.Information("[Python] Setting up...");
-            await Installer.SetupPython();
-
-            //PythonEngine.PythonPath += ";";
-
-            bool pipInstalled = Installer.TryInstallPip();
-            if (pipInstalled)
-                Log.Information($"Installed pip");
-
-            Installer.PipInstallModule("numpy");
-            //Console.WriteLine($"Installed numpy");
-
-            Installer.PipInstallModule("pillow");
-            //Console.WriteLine($"Installed pillow");
-
-            Installer.PipInstallModule("screeninfo");
-            //Console.WriteLine($"Installed screeninfo");
-
-            PythonEngine.Initialize();
-
-            using (Py.GIL())
-            {
-                dynamic sys = PythonEngine.ImportModule("sys");
-                Log.Information("[Python] Setup done. Version: " + sys.version);
-                sys.path.append(libPath);
-                //Console.WriteLine($"Sys.path: {sys.path}");
-            }
-            PythonEngine.BeginAllowThreads();
-        }
 
         static async Task RunAsync(string[] args)
         {
@@ -272,7 +222,7 @@ namespace discordGame
             }
             Program.discord = discord;
 
-            pythonSetupTask = Task.Run(() => SetupPython());
+            PythonManager.pythonSetupTask = Task.Run(() => PythonManager.SetupPython());
 
             var lobbyManager = discord.GetLobbyManager();
             Program.lobbyManager = lobbyManager;

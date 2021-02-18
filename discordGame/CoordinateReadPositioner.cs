@@ -15,11 +15,11 @@ namespace discordGame
             public float scale;
             public Rectangle bbox;
 
-            public Color c;
-            public bool Verify(Bitmap b)
-            {
-                return true;
-            }
+            //public Color c;
+            //public bool Verify(Bitmap b)
+            //{
+            //    return true;
+            //}
         }
 
         public static IEnumerable<Positioning> FindPossiblePositions(Bitmap bitmap, Rectangle bounds)

@@ -49,7 +49,7 @@ namespace discordGame
             measureEnd = measureStart + (long)measureDur.TotalMilliseconds;
             requests = 0;
 
-            Task task = Program.pythonSetupTask;
+            Task task = PythonManager.pythonSetupTask;
             task.Wait();
             Log.Information("[CoordinateReader] Initializing Python CoordinateReader...");
 

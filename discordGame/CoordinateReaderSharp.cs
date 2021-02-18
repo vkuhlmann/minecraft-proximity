@@ -15,7 +15,6 @@ namespace discordGame
     {
         Bitmap bitmap;
         Graphics graphics;
-        int i = 0;
         MinecraftFontReader fontReader;
         CoordinateReadPositioner.Positioning? positioning;
 
@@ -31,7 +30,10 @@ namespace discordGame
         long nextNotCalibratedWarning;
         TimeSpan notCalibratedWarningTimeout;
 
-        Regex coordsExtractRegex;        
+        Regex coordsExtractRegex;
+
+        int screen;
+        Rectangle bounds;
 
         public CoordinateReaderSharp()
         {
@@ -39,6 +41,8 @@ namespace discordGame
             graphics = Graphics.FromImage(bitmap);
             fontReader = new MinecraftFontReader();
             positioning = null;
+            screen = -1;
+            bounds = new Rectangle(0, 0, 1920, 1080);
 
             calibrateTimeout = TimeSpan.FromSeconds(5);
             nextAllowedCalibrate = Environment.TickCount64;
@@ -57,7 +61,36 @@ namespace discordGame
             "(?<z>[+-]?\\d+(\\.\\d+)?).*$");
         }
 
-        public Task<Coords?> GetCoords()
+        async Task RecalculateBounds()
+        {
+            Rectangle[] rects = await PythonManager.GetScreenRects();
+            int minX = 0;
+            int minY = 0;
+            int maxX = 0;
+            int maxY = 0;
+
+            foreach (Rectangle r in rects)
+            {
+                minX = Math.Min(minX, r.X);
+                minY = Math.Min(minY, r.Y);
+                maxX = Math.Max(maxX, r.X + r.Width);
+                maxY = Math.Max(maxY, r.Y + r.Height);
+            }
+
+            if (screen >= 0 && screen < rects.Length)
+            {
+                bounds = rects[screen];
+                positioning = null;
+                return;
+            }
+
+            //Log.Information("[CoordinateReader] Calibrating!");
+            //Rectangle screenBounds = new Rectangle(0, 0, 1920, 1080);
+            Rectangle screenBounds = new Rectangle(minX, minY, maxX - minX, maxY - minY);
+            bounds = screenBounds;
+        }
+
+        public async Task<Coords?> GetCoords()
         {
             if (Environment.TickCount64 > measureEnd)
             {
@@ -85,7 +118,9 @@ namespace discordGame
                     Coords? c = TryReadCoords(bitmap, new Point(pos.bbox.X, pos.bbox.Y));
 
                     if (c != null)
-                        return Task.FromResult(c);
+                        return c;
+                    //return Task.FromResult(c);
+
 
                     Log.Warning("[CoordinateReader] Lost coordinates calibration");
                     nextNotCalibratedWarning = Environment.TickCount64 + (long)notCalibratedWarningTimeout.TotalMilliseconds;
@@ -95,8 +130,26 @@ namespace discordGame
                 {
                     nextAllowedCalibrate = Environment.TickCount64 + (long)calibrateTimeout.TotalMilliseconds;
 
-                    //Log.Information("[CoordinateReader] Calibrating!");
-                    Rectangle screenBounds = new Rectangle(0, 0, 1920, 1080);
+                    //Rectangle[] rects = await PythonManager.GetScreenRects();
+                    //int minX = 0;
+                    //int minY = 0;
+                    //int maxX = 0;
+                    //int maxY = 0;
+
+                    //foreach (Rectangle r in rects)
+                    //{
+                    //    minX = Math.Min(minX, r.X);
+                    //    minY = Math.Min(minY, r.Y);
+                    //    maxX = Math.Max(maxX, r.X + r.Width);
+                    //    maxY = Math.Max(maxY, r.Y + r.Height);
+                    //}
+
+                    ////Log.Information("[CoordinateReader] Calibrating!");
+                    ////Rectangle screenBounds = new Rectangle(0, 0, 1920, 1080);
+                    //Rectangle screenBounds = new Rectangle(minX, minY, maxX - minX, maxY - minY);
+                    await RecalculateBounds();
+
+                    Rectangle screenBounds = bounds;
 
                     if (bitmap.Width < screenBounds.Width || bitmap.Height < screenBounds.Height)
                     {
@@ -129,7 +182,7 @@ namespace discordGame
                         if (c != null)
                         {
                             Log.Information("[CoordinateReader] Acquired coordinates calibration");
-                            return Task.FromResult(c);
+                            return c;//Task.FromResult(c);
                         }
                     }
 
@@ -146,7 +199,8 @@ namespace discordGame
                 requests += 1;
                 stopwatch.Stop();
             }
-            return Task.FromResult((Coords?)null);
+            return null;
+            //return Task.FromResult((Coords?)null);
         }
 
         public Coords? TryReadCoords(Bitmap bitmap, Point bitmapTopLeft)
@@ -173,7 +227,9 @@ namespace discordGame
 
         public void SetScreen(int screen)
         {
-            throw new NotImplementedException();
+            this.screen = screen;
+            this.positioning = null;
+            //RecalculateBounds().Wait();
         }
     }
 }

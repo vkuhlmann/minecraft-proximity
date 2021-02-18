@@ -56,7 +56,7 @@ namespace discordGame
             this.voiceLobby.onMemberConnect += VoiceLobby_onMemberConnect;
             this.voiceLobby.onMemberDisconnect += VoiceLobby_onMemberDisconnect;
 
-            Task task = Program.pythonSetupTask;
+            Task task = PythonManager.pythonSetupTask;
             task.Wait();
 
             using (Py.GIL())
@@ -303,7 +303,7 @@ namespace discordGame
             {
                 Log.Information("Starting server loop");
                 long ticks = Environment.TickCount64;
-                TimeSpan sendInterval = TimeSpan.FromMilliseconds(100);
+                TimeSpan sendInterval = TimeSpan.FromMilliseconds(1000 / 8);
                 long sendIntervalTicks = (long)sendInterval.TotalMilliseconds;
 
                 TimeSpan minDelay = TimeSpan.FromMilliseconds(5);

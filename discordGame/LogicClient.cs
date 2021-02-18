@@ -59,7 +59,7 @@ namespace discordGame
             serverUser = -1;
             ownUserId = Program.currentUserId;
             //sendCoordsInterval = TimeSpan.FromMilliseconds(240);
-            sendCoordsInterval = TimeSpan.FromMilliseconds(1000 / 12);
+            sendCoordsInterval = TimeSpan.FromMilliseconds(1000 / 10);
             //transmitsProcessing = new ConcurrentQueue<bool>();
 
             this.voiceLobby.onMemberConnect += VoiceLobby_onMemberConnect;

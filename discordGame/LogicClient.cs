@@ -204,6 +204,26 @@ namespace discordGame
             {
                 await SendCoordinates();
             }
+            //else if (action == "printMessage")
+            //{
+            //    string sender = data["sender"].Value<string>();
+
+            //    string message = data["message"].Value<string>();
+            //    message.Replace("\r", "");
+            //    string[] lines = message.Split('\n');
+
+            //    for (string line in lines) {
+            //        Log.Information("[Chat]");
+            //    }
+            else if (action == "broadcastReceive")
+            {
+                string message = data["message"].Value<string>();
+                message.Replace("\r", "");
+                string[] lines = message.Split('\n');
+
+                foreach (string line in lines)
+                    Log.Information("[Broadcast] {Message}", line);
+            }
             else if (action == "changeServer")
             {
                 long user = data["userId"].Value<long>();

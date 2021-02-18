@@ -249,6 +249,20 @@ namespace discordGame
             //Console.WriteLine($"Lobby {this.lobby.Id}: Disconnect from {userId} ({await GetFriendlyUsername(userId)})");
         }
 
+        public void SendBroadcast(string message)
+        {
+            foreach (var user in GetMembers())
+            {
+                JObject payload = JObject.FromObject(new
+                {
+                    action = "broadcastReceive",
+                    message = message
+                });
+
+                SendNetworkJson(user.Id, 0, payload);
+            }
+        }
+
         public void PrintUsers()
         {
             List<string> li = new List<string> { "Lobby members:" };

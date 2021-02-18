@@ -614,7 +614,7 @@ namespace discordGame
         {
             Match m;
 
-            if (s == "quit")
+            if (s == "quit" || s == "exit")
             {
                 isQuitRequested = true;
             }
@@ -627,7 +627,19 @@ namespace discordGame
             }
             else if (s == "doHost")
             {
-                DoHost();
+                nextTasks.Enqueue(async () =>
+                {
+                    DoHost();
+                    await Task.CompletedTask;
+                });
+            }
+            else if ((m = Regex.Match(s, "^broadcast (?<message>.*)$")).Success)
+            {
+                nextTasks.Enqueue(async () =>
+                {
+                    currentLobby?.SendBroadcast(m.Groups["message"].Value);
+                    await Task.CompletedTask;
+                });
             }
             else if ((m = Regex.Match(s, "screen (?<screenNum>[+-]?[\\d+])")).Success)
             {

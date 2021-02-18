@@ -11,6 +11,7 @@ using Python.Included;
 using Python.Runtime;
 using System.Collections.Concurrent;
 using System.Linq;
+using System.Diagnostics;
 
 namespace discordGame
 {
@@ -44,6 +45,8 @@ namespace discordGame
         CancellationTokenSource cancelTransmitTask;
         ConcurrentQueue<bool> transmitsProcessing;
 
+        RepeatProfiler calculateVolumesProfiler;
+
         public LogicServer(VoiceLobby voiceLobby)
         {
             Log.Information("[Server] Initializing server...");
@@ -52,6 +55,12 @@ namespace discordGame
             transmitsProcessing = new ConcurrentQueue<bool>();
             playersStores = new ConcurrentQueue<List<ServerPlayer>>();
             volumesStores = new ConcurrentQueue<VolumesMatrix>();
+
+            calculateVolumesProfiler = new RepeatProfiler(TimeSpan.FromSeconds(20),
+                (RepeatProfiler.Result result) =>
+                {
+                    Log.Information("[Server] Calculate volumes takes {DurMs:F2} ms on average ({Req} requests completed)", result.durMs, result.handledCount);
+                });
 
             this.voiceLobby.onMemberConnect += VoiceLobby_onMemberConnect;
             this.voiceLobby.onMemberDisconnect += VoiceLobby_onMemberDisconnect;
@@ -179,7 +188,7 @@ namespace discordGame
             {
                 voiceLobby.SendNetworkJson(pl.userId, 0, data);
             }
-            Log.Information("Host has been advertised");
+            Log.Information("[Server] Host has been advertised");
         }
 
         // Run enclosed with using(Py.GIL())!
@@ -249,6 +258,8 @@ namespace discordGame
 
             var t = Task.Run(new Func<VolumesMatrix>(() =>
             {
+                calculateVolumesProfiler.Start();
+
                 if (!volumesStores.TryDequeue(out VolumesMatrix mat))
                     mat = new VolumesMatrix();
                 int i = 0;
@@ -289,6 +300,8 @@ namespace discordGame
                     }
                 }
                 mat.RemoveRange(i, mat.Count - i);
+
+                calculateVolumesProfiler.Stop();
                 return mat;
             }));
 
@@ -301,17 +314,22 @@ namespace discordGame
         {
             try
             {
-                Log.Information("Starting server loop");
+                Log.Information("[Server] Starting server loop");
                 long ticks = Environment.TickCount64;
-                TimeSpan sendInterval = TimeSpan.FromMilliseconds(1000 / 8);
+                TimeSpan sendInterval = TimeSpan.FromMilliseconds(1000 / 10);
                 long sendIntervalTicks = (long)sendInterval.TotalMilliseconds;
 
                 TimeSpan minDelay = TimeSpan.FromMilliseconds(5);
 
-                long statsStart = Environment.TickCount64;
-                TimeSpan statsInterval = TimeSpan.FromSeconds(20);
-                long nextStatsTickcount = Environment.TickCount64 + (long)statsInterval.TotalMilliseconds;
-                int submissions = 0;
+                RepeatProfiler stats = new RepeatProfiler(TimeSpan.FromSeconds(20),
+                    (RepeatProfiler.Result result) =>
+                    {
+                        // Calculate volumes takes {DurMs:F2} ms on average ({Req} requests completed)", result.durMs, result.handledCount);
+
+                        //Log.Information("[Server] Update rate: {Rate:F2} per second (update takes {DurMs:F2} ms on average, {OccupationPerc:F2}%)", result.rate, result.durMs, result.occupation * 100.0f);
+                        //Log.Information("[Server] Update rate: {Rate:F2} per second", result.rate);
+                        Log.Information("[Server] Update rate: {Rate:F2} per second. Each calculations takes {DurMs:F2} ms on average.", result.rate, result.durMs);
+                    });
 
                 TaskCompletionSource<bool> completionSource = null;
                 ct.Register(() =>
@@ -321,50 +339,63 @@ namespace discordGame
                         a.TrySetCanceled();
                 });
 
+                int executed = 0;
+
                 try
                 {
                     while (true)
                     {
+                        
                         completionSource = new TaskCompletionSource<bool>();
                         ct.ThrowIfCancellationRequested();
 
                         //while (transmitsProcessing.Count > 0)
                         //	await Task.Delay(10, ct);
+
+                        stats.Start();
                         var ans = await CalculateVolumes();
+                        stats.Stop();
 
                         //Dictionary<long, float> a;
                         //SetUserVolumes(null, a.AsEnumerable().Select(it => (it.Key, it.Value)));
 
                         Program.nextTasks.Enqueue(async () =>
                         {
+                            //stats.Start();
                             foreach ((long userId, List<(long, float)> li) in ans)
                                 SetUserVolumes(playersMap[userId], li);
                             completionSource.TrySetResult(true);
+                            //stats.Stop();
+                            executed++;
                             await Task.CompletedTask;
                         });
+
+
                         await completionSource.Task;
 
                         volumesStores.Enqueue(ans);
 
-                        submissions++;
+                        //stats.Stop();
 
                         await Task.Delay(minDelay, ct);
-                        if (Environment.TickCount64 > nextStatsTickcount)
-                        {
-                            long timesp = Environment.TickCount64 - statsStart;
-                            float rate = submissions / (timesp / 1000.0f);
-                            Log.Information("[Server] Update rate: {Rate:F2} per second", rate);
+                        //if (Environment.TickCount64 > nextStatsTickcount)
+                        //{
+                        //    long timesp = Environment.TickCount64 - statsStart;
+                        //    float rate = submissions / (timesp / 1000.0f);
+                        //    Log.Information("[Server] Update rate: {Rate:F2} per second", rate);
 
-                            statsStart = Environment.TickCount64;
-                            nextStatsTickcount = statsStart + (long)statsInterval.TotalMilliseconds;
-                            submissions = 0;
-                        }
+                        //    statsStart = Environment.TickCount64;
+                        //    nextStatsTickcount = statsStart + (long)statsInterval.TotalMilliseconds;
+                        //    submissions = 0;
+                        //}
+
+                        executed--;
 
                         long nowTicks = Environment.TickCount64;
                         if (nowTicks > ticks + sendIntervalTicks)
                         {
-                            if (nowTicks > ticks + sendIntervalTicks * 3)
-                                ticks = nowTicks;
+                            if (nowTicks > ticks + 2000)
+                                ticks = nowTicks - sendIntervalTicks;
                             else
                                 ticks += sendIntervalTicks;
                         }

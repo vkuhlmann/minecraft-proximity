@@ -59,7 +59,7 @@ namespace discordGame
             serverUser = -1;
             ownUserId = Program.currentUserId;
             //sendCoordsInterval = TimeSpan.FromMilliseconds(240);
-            sendCoordsInterval = TimeSpan.FromMilliseconds(1000 / 10);
+            sendCoordsInterval = TimeSpan.FromMilliseconds(1000 / 12);
             //transmitsProcessing = new ConcurrentQueue<bool>();
 
             this.voiceLobby.onMemberConnect += VoiceLobby_onMemberConnect;
@@ -101,7 +101,7 @@ namespace discordGame
                 catch (TaskCanceledException) { }
                 catch (Exception ex)
                 {
-                    Log.Error("Transmit coords task encountered error: {Message}", ex.Message);
+                    Log.Error("[Client] Transmit coords task encountered error: {Message}", ex.Message);
                 }
             }
         }
@@ -230,7 +230,7 @@ namespace discordGame
 
                 if (user != Program.currentUserId && Program.server != null)
                 {
-                    Log.Information("Stopping own server.");
+                    Log.Information("[Client] Stopping own server.");
                     Program.server?.Stop();
                     Program.server = null;
                 }
@@ -238,12 +238,12 @@ namespace discordGame
                 serverUser = user;
 
 
-                Log.Information("Changed server to user {UserId}", serverUser);
+                Log.Information("[Client] Changed server to user {UserId}", serverUser);
                 RefreshPlayers();
             }
             else
             {
-                Log.Warning("Unknown action \"{Action}\"", action);
+                Log.Warning("[Client] Unknown action \"{Action}\"", action);
             }
         }
 
@@ -335,7 +335,7 @@ namespace discordGame
                         long nowTicks = Environment.TickCount64;
                         if (nowTicks >= ticks + sendIntervalTicks)
                         {
-                            if (nowTicks > ticks + sendIntervalTicks * 5)
+                            if (nowTicks > ticks + sendIntervalTicks + 2000)
                                 ticks = nowTicks - sendIntervalTicks;
                             else
                                 ticks += sendIntervalTicks;

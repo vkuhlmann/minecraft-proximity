@@ -412,15 +412,22 @@ namespace discordGame
             long errorBunchMax = 3;
             long errorBunchCount = 0;
 
-            // Pump the event look to ensure all callbacks continue to get fired.
+            RepeatProfiler profiler = new RepeatProfiler(TimeSpan.FromSeconds(20),
+                (RepeatProfiler.Result result) =>
+                {
+                    //Log.Information("On mainloop. Takes {DurMs:F2} ms on average. Executed {Executed} times. Rate: {Rate} per second. Occupation: {OccupationPerc:F2}%.",
+                    //    result.durMs, result.handledCount, result.rate, result.occupation * 100.0f);
+                    //Log.Information("On mainloop. minDurMs: {MinDurMs}, maxDurMs: {MaxDurMs}", result.minDurMs, result.maxDurMs);
+                });
+
             try
             {
                 Log.Information("\x1b[92mRunning! Enter 'quit' to quit.\x1b[0m");
                 int frame = 0;
-                //delayingTask.Status == TaskStatus.Running
 
                 while (!isQuitRequested)
                 {
+                    //profiler.Start();
                     frame += 1;
                     int i = 0;
                     while (i < scheduledTasks.Count)
@@ -489,6 +496,8 @@ namespace discordGame
 
                     if (delayingTask.IsCompleted)
                     {
+                        if (profiler.IsRunning())
+                            profiler.Stop();
                         runningTasks.Remove(delayingTask);
 
                         if (nextTasks.TryDequeue(out Func<Task> b))
@@ -497,11 +506,14 @@ namespace discordGame
                             //c.RunSynchronously();
                             delayingTask = c;
                             runningTasks.Add(c);
+                            profiler.Start();
                         }
                     }
 
                     discord.RunCallbacks();
                     lobbyManager.FlushNetwork();
+
+                    //profiler.Stop();
 
                     for (i = 0; i < scheduledTasks.Count; i++)
                         scheduledTasks[i] = (scheduledTasks[i].Item1 - 1, scheduledTasks[i].Item2);
@@ -513,7 +525,8 @@ namespace discordGame
                     //		break;
                     //}
 
-                    await Task.Delay(1000 / 60);
+                    if (nextTasks.Count == 0 && delayingTask.IsCompleted)
+                        await Task.Delay(1000 / 100);
                     //if ((frame % 60) == 0)
                     //	Log.Information("Ping!");
 

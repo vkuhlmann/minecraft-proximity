@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Text;
 using Serilog;
-using System.Collections.Concurrent;
 
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
@@ -14,7 +13,7 @@ namespace MinecraftProximity
 {
     class Legal
     {
-        public const string TERMS_VERSION = "2021-02-21T08:25Z";
+        public const string TERMS_VERSION = "2021-02-22T10:36Z";
         public const string PRIVACYPOLICY_VERSION = "2021-02-22T09:57Z";
 
         enum LegalFileType

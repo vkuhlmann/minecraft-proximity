@@ -1,9 +1,11 @@
 % minecraft-proximity terms
-% MAJOR-VERSION: 2021-02-21T08:25Z
-% MINOR-VERSION: 2021-02-22T09:57Z
+% MAJOR-VERSION: 2021-02-22T10:36Z
+% MINOR-VERSION: 2021-02-22T10:36Z
 
 All of the following licenses apply to this software. Usage and modification
 requires consent with these.
+
+NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG.
 
 ==================================================
   (1) Terms to arrange proper privacy compliance

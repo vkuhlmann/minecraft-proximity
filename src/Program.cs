@@ -29,12 +29,12 @@ namespace MinecraftProximity
         // where discord_game_sdk.zip can be obtained from
         // https://dl-game-sdk.discordapp.net/2.5.6/discord_game_sdk.zip
 
-        static VoiceLobby currentLobby = null;
+        public static VoiceLobby currentLobby = null;
         static bool createLobby = true;
-        static bool isQuitRequested = false;
+        public static bool isQuitRequested = false;
         public static ConfigFile configFile;
 
-        static async Task createLobbyIfNone()
+        public static async Task createLobbyIfNone()
         {
             if (!createLobby || currentLobby != null)
             {
@@ -157,24 +157,8 @@ namespace MinecraftProximity
                 var currentUser = userManager.GetCurrentUser();
                 Log.Information("Current user is {Username}#{Discriminator} ({Id})", currentUser.Username, currentUser.Discriminator, currentUser.Id);
 
-                //Console.WriteLine(currentUser.Username);
-                //Console.WriteLine(currentUser.Id);
                 currentUserId = currentUser.Id;
             };
-
-
-            lobbyManager.OnLobbyMessage += (lobbyID, userID, data) =>
-            {
-                Log.Information("Received lobby message: {1}", Encoding.UTF8.GetString(data));
-            };
-            //lobbyManager.OnNetworkMessage += (lobbyId, userId, channelId, data) =>
-            //{
-            //	Log.Information("Received network message: {0} {1} {2} {3}", lobbyId, userId, channelId, Encoding.UTF8.GetString(data));
-            //};
-            //lobbyManager.OnSpeaking += (lobbyID, userID, speaking) =>
-            //{
-            //	Log.Information("Received lobby speaking: {0} {1} {2}", lobbyID, userID, speaking);
-            //};
 
             List<(int, Func<Task>)> scheduledTasks = new List<(int, Func<Task>)>
             {
@@ -186,41 +170,7 @@ namespace MinecraftProximity
                 )
             };
 
-            //Task a = Task.Run(() =>
-            //{
-            //	currentLobby = VoiceLobby.Create().Result;
-            //	Log.Information("Lobby has been created");
-            //});
-
             var overlayManager = discord.GetOverlayManager();
-            ////overlayManager.OnOverlayLocked += locked =>
-            ////{
-            ////	Console.WriteLine("Overlay Locked: {0}", locked);
-            ////};
-            ////overlayManager.SetLocked(false);
-
-            //if (!overlayManager.IsEnabled())
-            //{
-            //	Console.WriteLine("Overlay is not enabled. Modals will be shown in the Discord client instead");
-            //}
-
-            //if (overlayManager.IsLocked())
-            //{
-            //	overlayManager.SetLocked(true, (res) =>
-            //	{
-            //		Console.WriteLine("Input in the overlay is now accessible again");
-            //	});
-            //}
-
-            //overlayManager.OpenVoiceSettings((result) =>
-            //{
-            //	if (result == Discord.Result.Ok)
-            //	{
-            //		Console.WriteLine("Voice settings overlay has been opened in Discord");
-            //	}
-            //});
-
-            //coordinateReader = new CoordinateReader();
 
             CancellationTokenSource cancelPrintCoordsSource = new CancellationTokenSource();
             CancellationToken cancelPrintCoords = cancelPrintCoordsSource.Token;
@@ -229,12 +179,10 @@ namespace MinecraftProximity
             List<Task> runningTasks = new List<Task>();
             Task delayingTask = Task.CompletedTask;
 
-            //Log.Information("Running callback loop on {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
-
             CancellationTokenSource cancelExecLoopSource = new CancellationTokenSource();
             CancellationToken cancelExecLoop = cancelExecLoopSource.Token;
 
-            Task execLoop = Task.Run(() => DoExecLoop(cancelExecLoop));
+            Task execLoop = Task.Run(() => CommandHandler.DoHandleLoop(cancelExecLoop));
 
             long errorBunchDur = (long)TimeSpan.FromSeconds(10).TotalMilliseconds;
             long errorBunchEnd = Environment.TickCount64 + errorBunchDur;
@@ -332,7 +280,6 @@ namespace MinecraftProximity
                         if (nextTasks.TryDequeue(out Func<Task> b))
                         {
                             Task c = b();
-                            //c.RunSynchronously();
                             delayingTask = c;
                             runningTasks.Add(c);
                             profiler.Start();
@@ -347,18 +294,8 @@ namespace MinecraftProximity
                     for (i = 0; i < scheduledTasks.Count; i++)
                         scheduledTasks[i] = (scheduledTasks[i].Item1 - 1, scheduledTasks[i].Item2);
 
-                    //if (Console.KeyAvailable)
-                    //{
-                    //	ConsoleKeyInfo key = Console.ReadKey(true);
-                    //	if (key.Key == ConsoleKey.Q)
-                    //		break;
-                    //}
-
                     if (nextTasks.Count == 0 && delayingTask.IsCompleted)
                         await Task.Delay(1000 / 100);
-                    //if ((frame % 60) == 0)
-                    //	Log.Information("Ping!");
-
                 }
 
                 server?.Stop();
@@ -377,8 +314,6 @@ namespace MinecraftProximity
                     execLoop.Wait();
                 }
                 catch (Exception) { }
-
-                //a.Wait();
             }
             catch (Exception ex)
             {
@@ -392,7 +327,6 @@ namespace MinecraftProximity
 
             Console.WriteLine("The program has terminated. Press any key to quit.");
             Console.ReadKey();
-            //await a;
         }
 
         public static void DoHost()
@@ -402,85 +336,31 @@ namespace MinecraftProximity
             server.AdvertiseHost();
         }
 
-        static async Task ExecuteCommand(string s)
-        {
-            Match m;
+        //static async Task ExecuteCommand(string s)
+        //{
 
-            if (s == "quit" || s == "exit")
-            {
-                isQuitRequested = true;
-            }
-            else if (s == "createLobby")
-            {
-                nextTasks.Enqueue(async () =>
-                {
-                    await createLobbyIfNone();
-                });
-            }
-            else if (s == "doHost")
-            {
-                nextTasks.Enqueue(async () =>
-                {
-                    DoHost();
-                    await Task.CompletedTask;
-                });
-            }
-            else if ((m = Regex.Match(s, "^broadcast (?<message>.*)$")).Success)
-            {
-                nextTasks.Enqueue(async () =>
-                {
-                    currentLobby?.SendBroadcast(m.Groups["message"].Value);
-                    await Task.CompletedTask;
-                });
-            }
-            else if ((m = Regex.Match(s, "screen (?<screenNum>[+-]?[\\d+])")).Success)
-            {
-                if (client == null)
-                {
-                    Console.WriteLine("Client is null");
-                    return;
-                }
-                client.coordsReader.SetScreen(int.Parse(m.Groups["screenNum"].Value));
+        //}
 
-            }
-            else if (s == "overlay")
-            {
-                var overlayManager = discord.GetOverlayManager();
-                overlayManager.OpenVoiceSettings((result) =>
-                {
-                    if (result == Discord.Result.Ok)
-                    {
-                        Console.WriteLine("The overlay has been opened in Discord");
-                    }
-                });
-            }
-            else
-            {
-                Console.WriteLine($"Unrecognized command");
-            }
-            await Task.CompletedTask;
-        }
-
-        static async Task DoExecLoop(CancellationToken tok)
-        {
-            while (!isQuitRequested)
-            {
-                tok.ThrowIfCancellationRequested();
-                string line = Console.ReadLine();
-                if (line == null)
-                    break;
-                try
-                {
-                    await ExecuteCommand(line);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error("Error executing command: {Message}", ex.Message);
-                    Log.Error("StackTrace:");
-                    Log.Error("{StackTrace}", ex.StackTrace);
-                }
-            }
-        }
+        //static async Task DoExecLoop(CancellationToken tok)
+        //{
+        //    while (!isQuitRequested)
+        //    {
+        //        tok.ThrowIfCancellationRequested();
+        //        string line = Console.ReadLine();
+        //        if (line == null)
+        //            break;
+        //        try
+        //        {
+        //            await ExecuteCommand(line);
+        //        }
+        //        catch (Exception ex)
+        //        {
+        //            Log.Error("Error executing command: {Message}", ex.Message);
+        //            Log.Error("StackTrace:");
+        //            Log.Error("{StackTrace}", ex.StackTrace);
+        //        }
+        //    }
+        //}
 
         static async Task DoPrintCoordsLoop(CancellationToken tok)
         {

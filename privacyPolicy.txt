@@ -1,3 +1,7 @@
+% minecraft-proximity privacy policy
+% MAJOR-VERSION: 2021-02-22T09:57Z
+% MINOR-VERSION: 2021-02-22T09:57Z
+
 ===========================================
   Minecraft Proximity Chat Privacy Policy
 ===========================================
@@ -28,9 +32,13 @@ https://dotnet.microsoft.com/en/dotnet_library_license.htm
 Use of the Software hence also entails the privacy statement put forward in that
 license.
 
-**
+
+
+
 I do not collect any data from you through the Software.
-**
+
+
+
 
 The Software may communicate through the Discord API's to people who participate
 in a Discord activity associated with the Software. Note the Software does not
@@ -38,8 +46,8 @@ provide any conditions on how the recipient may use this data. Of course,
 Discord policies and laws might still protect you.
 
 This data* is mainly comprised of configuration, public identifiers, and
-Minecraft coordinates. Also, if you use a Modified version, be aware additional
-data can be sent along.
+Minecraft coordinates. Also, if you use a modified Python script, be aware
+additional data can be sent along.
 
 
 * I do not consider voice chat as part of this information. The Software doesn't

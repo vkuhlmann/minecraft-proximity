@@ -1,3 +1,7 @@
+% minecraft-proximity terms
+% MAJOR-VERSION: 2021-02-21T08:25Z
+% MINOR-VERSION: 2021-02-22T09:57Z
+
 All of the following licenses apply to this software. Usage and modification
 requires consent with these.
 
@@ -5,9 +9,9 @@ requires consent with these.
   (1) Terms to arrange proper privacy compliance
 ==================================================
 
-Modification of this text in this section is not allowed. If you do not use the
-privacy policy provided in your derivative work, this section (1) can be removed
-from it, else it can't.
+Modification of the text in this section (1) is not allowed. If you do not use
+the privacy policy provided in your derivative work, this section (1) can be
+removed from your distribution, else it can't.
 
 The words "I", "me", "my", "we", "our", "us" refer to Vincent Kuhlmann.
 
@@ -20,19 +24,19 @@ Next, "Modified version" refers to a derivative of the Software which is
 different to all versions provided on the stated repository. This is with the
 exception that changes involving only Python scripts are not considered modified
 versions, if the distributor adheres to the following conditions:
-  (a) The distributor warrants the privacy side of the Python-part of Modified
-      version.
-  (b) The distributor must state there is a modification upon distribution. Or
-      this must be evident from the context, like talking about you having
-	  modified the script, and sending a Python script soon after.
+  (a) The distributor warrants the privacy side of the Python-part of the
+      Modified version.
+  (b) The distributor must state there is a modification upon distributing. Or
+      this must be evident from the context, like talking about having modified
+	  the script, and sending a Python script soon after.
   (c) The distributor cannot collect any personal data through the modified
       script.
-If there is no actual distributor involved, i.e. you are the author, then you
-are considered as the distributor in these conditions.
+If there is no distributor involved yet, i.e. you are the author, then you are
+considered as the distributor in these conditions.
 
-If sending a Python script made for use with the Software, even when not based
-on a Python script of the Software, this is considered distributing a derivative
-of the Software, since it implies an altering of the Software.
+Sending a Python script made for use with the Software, even when not based on a
+Python script of the Software, this is considered distributing a derivative of
+the Software, since it implies an altering of the Software.
 
 The privacy policy provided is valid for any derivative of the Software which
 is not a Modified version.
@@ -50,13 +54,20 @@ yours. Of course, update the text if your applications requires more liberties.
 =================
   (2) Main work
 =================
-See LICENSE.txt for the full information.
 
 MIT License - (c) 2021 Vincent Kuhlmann
+  [See LICENSE.txt]
 
 ====================
   (3) Dependencies
 ====================
+
+Discord Game SDK
+  The files under discordGame/DiscordAPI as well as discord_game_sdk.dll and
+  similar files (if included) are copyright Discord. Only use in accordance with
+  the Discord Developer Terms of Use. (Note Core.cs is modified to fix a bug.)
+  Some code, notably in Program.cs is based on example code provided by the SDK.
+  These parts might hence be subject to the same copyright and conditions.
 
 MIT License - (c) 2019 James Newton-King
   [Newtonsoft.Json as provided by NuGet]

@@ -33,78 +33,10 @@ namespace discordGame
         // where discord_game_sdk.zip can be obtained from
         // https://dl-game-sdk.discordapp.net/2.5.6/discord_game_sdk.zip
 
-        // Update user's activity for your game.
-        // Party and secrets are vital.
-        // Read https://discordapp.com/developers/docs/rich-presence/how-to for more details.
-        static void UpdateActivity(Discord.Discord discord, Discord.Lobby lobby)
-        {
-            var activityManager = discord.GetActivityManager();
-            var lobbyManager = discord.GetLobbyManager();
-
-            var activity = new Discord.Activity
-            {
-                State = "Party status",
-                Details = "What am I doing?",
-                Timestamps =
-                    {
-                        Start = 5,
-                        End = 6,
-                    },
-                Assets =
-                    {
-                        LargeImage = "foo largeImageKey",
-                        LargeText = "foo largeImageText",
-                        SmallImage = "foo smallImageKey",
-                        SmallText = "foo smallImageText",
-                    },
-                Party =
-                    {
-                        Id = lobby.Id.ToString(),
-                        Size =
-                            {
-                                CurrentSize = lobbyManager.MemberCount(lobby.Id),
-                                MaxSize = (int)lobby.Capacity,
-                            },
-                    },
-                Secrets = {
-                    Join = lobbyManager.GetLobbyActivitySecret(lobby.Id),
-                },
-                Instance = true,
-            };
-
-            activityManager.UpdateActivity(activity, result =>
-            {
-                Console.WriteLine("Update Activity {0}", result);
-
-                // Send an invite to another user for this activity.
-                // Receiver should see an invite in their DM.
-                // Use a relationship user's ID for this.
-                // activityManager
-                //   .SendInvite(
-                //       364843917537050624,
-                //       Discord.ActivityActionType.Join,
-                //       "",
-                //       inviteResult =>
-                //       {
-                //           Console.WriteLine("Invite {0}", inviteResult);
-                //       }
-                //   );
-            });
-        }
-
-        //async static Task myFunction()
-        //{
-        //	Console.WriteLine("---- I");
-        //	await Task.Delay(2000);
-        //	//Thread.Sleep(10000);
-
-        //	Console.WriteLine("---- II");
-        //	await Task.CompletedTask;
-        //}
-
         static VoiceLobby currentLobby = null;
         static bool createLobby = true;
         static bool isQuitRequested = false;
+        public static ConfigFile configFile;
 
         static async Task createLobbyIfNone()
         {
@@ -127,57 +59,16 @@ namespace discordGame
             DoHost();
         }
 
-
         static async Task RunAsync(string[] args)
         {
-            const float presentTermVersion = 1.0f;
+            configFile = new ConfigFile("config.json");
 
-            float agreedTermsVersion = 0.0f;
-
-            JObject configFile = null;
-            if (File.Exists("config.json"))
+            if(!Legal.DoesUserAgree())
             {
-                string configFileContent = File.ReadAllText("config.json");
-                configFile = JObject.Parse(configFileContent);
-                JToken propAgreedTermsVersion = configFile["agreedTermsVersion"];
-                if (propAgreedTermsVersion != null && propAgreedTermsVersion.Type == JTokenType.Float)
-                    agreedTermsVersion = propAgreedTermsVersion.Value<float>();
-            }
-
-            if (agreedTermsVersion != presentTermVersion)
-            {
-                if (agreedTermsVersion != 0.0f)
-                    Console.WriteLine("The terms or privacy policy has been updated.");
-
-                Console.WriteLine("Yes, legal things... *sigh*");
-                Console.WriteLine("Use of this program is subject to the term set forward in LICENSES.txt and to privacyPolicy.txt");
-                Console.Write("Do you agree to these terms and to the privacy policy? (Y/N) ");
-                while (true)
-                {
-                    ConsoleKeyInfo keyInfo = Console.ReadKey(true);
-                    if (keyInfo.KeyChar == 'y' || keyInfo.KeyChar == 'Y')
-                    {
-                        Console.WriteLine("Y");
-                        agreedTermsVersion = presentTermVersion;
-                        break;
-                    }
-                    else if (keyInfo.KeyChar == 'n' || keyInfo.KeyChar == 'N')
-                    {
-                        Console.WriteLine("N");
-                        Console.WriteLine("This program requires these conditions and has hence terminated.");
-                        Console.WriteLine("Press any key to quit");
-                        Console.ReadKey(true);
-                        return;
-                    }
-
-                }
-
-                if (configFile == null)
-                    configFile = new JObject();
-                configFile["agreedTermsVersion"] = agreedTermsVersion;
-                File.WriteAllText("config.json", configFile.ToString());
-                Console.WriteLine("The choice is saved in the config file");
-                Console.WriteLine();
+                Console.WriteLine("The legal requirements have not been agreed upon, and hence the program must terminate.");
+                Console.WriteLine("Press any key to quit");
+                Console.ReadKey(true);
+                return;
             }
 
             nextTasks = new ConcurrentQueue<Func<Task>>();

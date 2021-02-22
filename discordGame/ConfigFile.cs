@@ -24,14 +24,7 @@ namespace discordGame
         public ConfigFile(string path = "config.json")
         {
             Path = path;
-            if (File.Exists(Path))
-            {
-                string configFileContent = File.ReadAllText(Path);
-                Json = JObject.Parse(configFileContent);
-                //JToken propAgreedTermsVersion = configFile["agreedTermsVersion"];
-                //if (propAgreedTermsVersion != null && propAgreedTermsVersion.Type == JTokenType.Float)
-                //    agreedTermsVersion = propAgreedTermsVersion.Value<float>();
-            }
+            Reload();
         }
 
         public void Reload()
@@ -44,10 +37,11 @@ namespace discordGame
             {
                 Json = JObject.FromObject(new
                 {
-                    LegalAgreed = new
+                    legalAgreed = new
                     {
 
-                    }
+                    },
+                    multiDiscord = false
                     //agreedTermsVersion = "None",
                     //agreedPrivacyPolicyVersion = "None"
                 });

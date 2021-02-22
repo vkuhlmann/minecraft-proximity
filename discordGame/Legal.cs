@@ -64,9 +64,9 @@ namespace discordGame
                     Log.Warning("[Legal] The {Type} found is a wrong version!", friendlyName);
             }
 
-            JToken obj = Program.configFile.Json["LegalAgreed"];
+            JToken obj = Program.configFile.Json["legalAgreed"];
             if (obj == null)
-                obj = Program.configFile.Json["LegalAgreed"] = new JObject();
+                obj = Program.configFile.Json["legalAgreed"] = new JObject();
 
             JToken a = obj[type.ToString()];
             if (a == null)

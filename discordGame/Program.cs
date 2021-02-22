@@ -13,9 +13,6 @@ using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-// Use and distribution of this program requires compliance with https://dotnet.microsoft.com/en/dotnet_library_license.htm
-// As per necessary by some dependencies.
-
 namespace discordGame
 {
     class Program
@@ -23,7 +20,6 @@ namespace discordGame
         public static Discord.Discord discord;
         public static Discord.LobbyManager lobbyManager;
         public static ConcurrentQueue<Func<Task>> nextTasks;
-        //public static CoordinateReader coordinateReader;
         public static long currentUserId;
         public static LogicClient client;
         public static LogicServer server;
@@ -46,7 +42,6 @@ namespace discordGame
                 return;
             }
 
-            //currentLobby = VoiceLobby.Create().Result;
             currentLobby = await VoiceLobby.Create();
             if (currentLobby == null)
             {
@@ -77,36 +72,22 @@ namespace discordGame
 
             var clientID = "804643036755001365";
 
-            Console.Write("DISCORD_INSTANCE_ID: ");
-            string instanceID = Console.ReadLine();
+            if (configFile.Json["multiDiscord"]?.Value<bool>() == true)
+            {
+                Console.Write("DISCORD_INSTANCE_ID: ");
+                string instanceID = Console.ReadLine();
 
-            Environment.SetEnvironmentVariable("DISCORD_INSTANCE_ID", instanceID);
-
-            //Task a = Task.Run(async () =>
-            //{
-            //	Console.WriteLine("---- Start");
-            //	await myFunction();
-
-            //	//Thread.Sleep(10000);
-            //	Console.WriteLine("---- Stop");
-            //	await Task.CompletedTask;
-            //});
-            //await a;
-
-            //Task a = myFunction();
-            //Console.WriteLine("---- A");
-            //Thread.Sleep(2000);
-            //Console.WriteLine("---- B");
+                Environment.SetEnvironmentVariable("DISCORD_INSTANCE_ID", instanceID);
+            }
 
             Discord.Discord discord;
             try
             {
-                discord = new Discord.Discord(Int64.Parse(clientID), (UInt64)Discord.CreateFlags.Default);
+                discord = new Discord.Discord(long.Parse(clientID), (long)Discord.CreateFlags.Default);
             }
             catch (Exception ex)
             {
                 Log.Fatal($"Error initializing Discord hook: {ex}");
-                //Console.WriteLine("Program was terminated");
                 Console.WriteLine("Press any key to quit");
                 Console.ReadKey(true);
                 return;
@@ -227,23 +208,6 @@ namespace discordGame
                 async () =>
                 {
                     await createLobbyIfNone();
-
-					//if (!createLobby || currentLobby != null)
-					//{
-					//	Log.Information("Not creating lobby: already exists");
-					//	return;
-					//}
-
-					//Log.Information("Creating new lobby");
-
-					////currentLobby = VoiceLobby.Create().Result;
-					//currentLobby = await VoiceLobby.Create();
-					////Log.Information("Lobby has been created");
-					////Log.Information("Blocking for 10 seconds");
-					////Thread.Sleep(10000);
-					////Log.Information("Done blocking");
-
-					//client = new LogicClient(currentLobby);
 				}
                 )
             };

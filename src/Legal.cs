@@ -54,6 +54,7 @@ namespace MinecraftProximity
             if (legalFile == null)
             {
                 Log.Warning("[Legal] The {Type} cannot be found.", friendlyName);
+                //Log.Information("[Legal] Current work directory is {Directory}", Directory.GetCurrentDirectory());
             }
             else
             {
@@ -135,7 +136,9 @@ namespace MinecraftProximity
 
         static LegalFile? LocateTerms()
         {
-            DirectoryInfo dir = new DirectoryInfo(Directory.GetCurrentDirectory());
+            //DirectoryInfo dir = new DirectoryInfo(Directory.GetCurrentDirectory());
+            DirectoryInfo dir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);
+
             string filePath = null;
             while (dir != null)
             {
@@ -173,7 +176,9 @@ namespace MinecraftProximity
 
         static LegalFile? LocatePrivacyPolicy()
         {
-            DirectoryInfo dir = new DirectoryInfo(Directory.GetCurrentDirectory());
+            //DirectoryInfo dir = new DirectoryInfo(Directory.GetCurrentDirectory());
+            DirectoryInfo dir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);
+
             string filePath = null;
             while (dir != null)
             {

@@ -51,7 +51,7 @@ namespace MinecraftProximity
 
             client?.Stop();
             client = new LogicClient(currentLobby);
-            DoHost();
+            //DoHost();
         }
 
         static async Task RunAsync(string[] args)
@@ -200,7 +200,7 @@ namespace MinecraftProximity
                 Log.Information("\x1b[92mRunning! Enter 'quit' to quit.\x1b[0m");
                 int frame = 0;
 
-                while (!isQuitRequested)
+                while (!isQuitRequested || runningTasks.Count > 0)
                 {
                     //profiler.Start();
                     frame += 1;

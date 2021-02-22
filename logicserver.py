@@ -1,5 +1,6 @@
 
 import numpy as np
+import densitymap
 
 class Obscuration:
     def __init__(self, lowCorner, highCorner, transmissionCoeff):
@@ -46,12 +47,39 @@ class Obscuration:
         dist = np.linalg.norm(highRay - lowRay)
         return np.exp(np.log(self.transmissionCoeff) * dist)
 
+def generateObscurations(l, dens):
+    l.clear()
+    for v in range(len(dens.densities)):
+        for u in range(len(dens.densities[v])):
+            x = u + dens.x
+            y = v + dens.z
+            coeff = dens.densities[v][u]
+            if coeff >= 0.95:
+                continue
+
+            l.append(Obscuration(
+                np.array([x, 0, y]),
+                np.array([x + 1, 255, y + 1]),
+                transmissionCoeff=coeff
+            ))
+    #print(f"Obscurations are now\n{l}")
+
 class LogicServer:
     def __init__(self):
-        self.obsc = Obscuration(
+        self.obscurations = [Obscuration(
             np.array([92, 56, -59]),
             np.array([93, 58, -53]),
-            transmissionCoeff=0.1)
+            transmissionCoeff=0.1)]
+
+        densitymap.densityMap.onUpdate = lambda: generateObscurations(self.obscurations, densitymap.densityMap)
+        self.prevBase = None
+        
+    def Shutdown(self):
+        densitymap.loop.stop()
+
+    def HandleCommand(self, cmdName, args):
+        print(f"Received command {cmdName} with args {args}")
+        return False
 
     @staticmethod
     def Create():
@@ -70,12 +98,24 @@ class LogicServer:
         basePos = base["pos"]
         othPos = oth["pos"]
 
+        if base != self.prevBase or True:
+            self.prevBase = base
+            try:
+                if basePos != None:
+                    densitymap.densityMap.setPlayerPosition(base["username"], basePos["x"], basePos["z"])
+                else:
+                    densitymap.densityMap.setPlayerPosition(base["username"], 0, 0)
+            except Exception as ex:
+                print(f"Error setting player position: {ex}")
+
         if basePos is None or othPos is None:
             return 1.0
         dist = np.linalg.norm(basePos - othPos)
         #return max(1.0 - dist / 10.0, 0.0)
         halvingDistance = 10
 
-        factor = self.obsc.getFactor(othPos, basePos)
+        factor = 1.0
+        for obsc in self.obscurations:
+            factor *= obsc.getFactor(othPos, basePos)
 
         return max(1.0 - (dist / halvingDistance)**2 / 2, 0.0) * factor

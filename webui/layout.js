@@ -41,6 +41,7 @@ let colormap = { ".": "rgb(181,186,253)", "x": "rgb(63,72,204)" };
 let panButton;
 let resizeButton;
 let resizeController;
+let socket = null;
 
 function onDOMReady() {
     mapper = new Mapper($("#mapper")[0]);
@@ -121,6 +122,8 @@ function onDOMReady() {
     $("#saveImage").on("click", e => {
         saveImage();
     });
+
+    tryOpenSocket();
 }
 
 // function resetSplitterWidth() {
@@ -308,6 +311,100 @@ const parseRGBARegex = new RegExp(
     "(,\\s*(?<alpha>\\d+(\\.\\d+)?)\\s*(?<alphaPercentage>%)?\\s*)?\\)\\s*$");
 
 
+function tryOpenSocket() {
+    debugger;
+    socket = new WebSocket("ws://127.0.0.1:6789");
+    socket.onopen = e => {
+        console.log("[open] Connection established");
+    };
+
+    socket.onmessage = e => {
+        handleMessage(JSON.parse(e.data));
+    };
+
+    socket.onerror = (e) => {
+        console.log(`[error] Socket error`);
+    }
+
+    socket.onclose = (e) => {
+        console.log(`[close] Socket closed with code ${e.code}, reason: ${e.reason}`);
+        socket = null;
+    }
+}
+
+function handleMessage(json) {
+    switch (json.type) {
+        case "playercoords":
+            {
+                updatePlayerCoords(json.data);
+            }
+            break;
+
+        default:
+            console.log(`Unknown message type ${json.type ?? "null"}`);
+    }
+}
+
+let playerIndicator = document.createElement("template");
+playerIndicator.innerHTML = `
+<g>
+<circle cx="0" cy="0" r="2" fill="red" />
+<text x="0" y="10">AA</text>
+</g>
+`;
+
+let playerPos = {}
+
+function updatePlayerCoords(data) {
+    //debugger;
+    for (let pl of data) {
+        if (!(pl in playerPos)) {
+            playerPos[pl] = {el: playerIndicator.content.children[0].cloneNode(true)};
+            diagram.pannableContent.el.appendChild(playerPos[pl].el);
+            console.log("Appended new playerPos element");
+        }
+        let els = playerPos[pl].el;
+        let x = pl.x * diagram.tileSize;
+        let y = pl.z * diagram.tileSize;
+
+        els.setAttribute("transform", `translate(${x} ${y})scale(30)`);
+    }
+    //console.log(JSON.stringify(data));
+}
+
+async function sendNewData() {
+    let data = [];
+    let map = mapper.toCoefficient;
+    let lines = pixelart;
+    for (let line of lines) {
+        let dat = [];
+        for (let ch of line) {
+            dat.push(map[ch]);
+        }
+        data.push(dat);
+    }
+    if (socket != null)
+        await socket.send(JSON.stringify({ "action": "updatemap", "data": data }));
+    else
+        console.log("Socket is not open! Can't send new data.");
+}
+
+async function runCommand(comm) {
+    commandHistory[commandHistory.length - 1] = comm;
+    commandHistory.push("");
+    commandHistoryIndex = commandHistory.length - 1;
+    addConsoleLine(`> ${comm}`);
+    //console.log(`Command: ${comm}`);
+
+    if (comm.length > 0) {
+        try {
+            await socket.send(JSON.stringify({ "action": "command", "command": comm }));
+        } catch (error) {
+            console.log(`Error trying to send the command: ${error}`);
+        }
+    }
+}
+
 function parseRGBAValues(string) {
     let match = string.match(parseRGBARegex);
     let arr = [+match.groups["red"], +match.groups["green"], +match.groups["blue"],
@@ -397,7 +494,7 @@ function setupOverlay() {
 }
 
 function onChanged() {
-    //
+    sendNewData();
 }
 
 function updateSVGDisplay() {

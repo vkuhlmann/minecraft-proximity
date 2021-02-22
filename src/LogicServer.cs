@@ -117,6 +117,36 @@ namespace MinecraftProximity
                     Log.Error("Transmit task encountered error: {Message}", ex.Message);
                 }
             }
+
+            try
+            {
+                using (Py.GIL())
+                {
+                    logicServerPy.Shutdown();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Python raised an error trying to do Shutdown: {Message}", ex.Message);
+            }
+        }
+
+        public bool HandleCommand(string cmdName, string args)
+        {
+            try
+            {
+                using (Py.GIL())
+                {
+                    if (logicServerPy == null)
+                        return false;
+                    return logicServerPy.HandleCommand(cmdName, args);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Python raised an error trying to do HandleCommand: {Message}", ex.Message);
+                return false;
+            }
         }
 
         private void VoiceLobby_onMemberDisconnect(long lobbyId, long userId)
@@ -292,7 +322,16 @@ namespace MinecraftProximity
                                 continue;
                             dynamic reprOth = GetUser(oth);
 
-                            li.Add((oth.userId, logicServerPy.GetVolume(reprPl, reprOth)));
+                            try
+                            {
+                                li.Add((oth.userId, logicServerPy.GetVolume(reprPl, reprOth)));
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Error($"Error getting volume: {ex.Message}");
+                                throw ex;
+                            }
+
                             //volumes[oth.userId] = logicServerPy.GetVolume(reprPl, reprOth);
                         }
 
@@ -345,7 +384,7 @@ namespace MinecraftProximity
                 {
                     while (true)
                     {
-                        
+
                         completionSource = new TaskCompletionSource<bool>();
                         ct.ThrowIfCancellationRequested();
 

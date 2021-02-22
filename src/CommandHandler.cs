@@ -30,7 +30,7 @@ namespace MinecraftProximity
                     {
                         Log.Error($"An error occured while executing the command: {ex}");
                     }
-//                    });
+                    //                    });
                 }
                 catch (Exception ex)
                 {
@@ -174,6 +174,10 @@ namespace MinecraftProximity
             if (commands.TryGetValue(m.Groups["cmdName"].Value, out Func<string, Task> value))
             {
                 await value(m.Groups["args"].Value);
+            }
+            else if (Program.server != null && Program.server.HandleCommand(cmdName, m.Groups["args"].Value))
+            {
+
             }
             else
             {

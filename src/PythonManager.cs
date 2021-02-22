@@ -75,6 +75,11 @@ namespace MinecraftProximity
             Installer.PipInstallModule("screeninfo");
             //Console.WriteLine($"Installed screeninfo");
 
+            Installer.PipInstallModule("asyncio");
+
+            Installer.PipInstallModule("websockets");
+
+
             PythonEngine.Initialize();
 
             using (Py.GIL())

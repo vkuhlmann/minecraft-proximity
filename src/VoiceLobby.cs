@@ -7,7 +7,7 @@ using System.Threading;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace discordGame
+namespace MinecraftProximity
 {
     public class VoiceLobby
     {

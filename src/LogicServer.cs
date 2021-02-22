@@ -13,7 +13,7 @@ using System.Collections.Concurrent;
 using System.Linq;
 using System.Diagnostics;
 
-namespace discordGame
+namespace MinecraftProximity
 {
     using VolumesMatrix = List<(long, List<(long, float)>)>;
 

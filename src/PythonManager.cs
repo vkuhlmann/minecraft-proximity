@@ -8,7 +8,7 @@ using System.IO;
 using System.Drawing;
 using Serilog;
 
-namespace discordGame
+namespace MinecraftProximity
 {
     class PythonManager
     {

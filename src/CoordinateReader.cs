@@ -9,7 +9,7 @@ using System.IO;
 using System.Diagnostics;
 
 
-namespace discordGame
+namespace MinecraftProximity
 {
     public struct Coords
     {

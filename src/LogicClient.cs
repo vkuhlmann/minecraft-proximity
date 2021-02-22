@@ -9,7 +9,7 @@ using Newtonsoft.Json.Linq;
 using Serilog;
 using System.Collections.Concurrent;
 
-namespace discordGame
+namespace MinecraftProximity
 {
     class Player
     {

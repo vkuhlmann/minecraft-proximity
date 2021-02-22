@@ -10,7 +10,7 @@ using Newtonsoft.Json.Linq;
 using System.IO;
 using System.Linq;
 
-namespace discordGame
+namespace MinecraftProximity
 {
     class Legal
     {

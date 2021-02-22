@@ -12,9 +12,8 @@ using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System.Runtime.InteropServices;
 
-namespace discordGame
+namespace MinecraftProximity
 {
     class Program
     {

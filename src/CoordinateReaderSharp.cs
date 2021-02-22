@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 
 using Serilog;
 
-namespace discordGame
+namespace MinecraftProximity
 {
     public class CoordinateReaderSharp : ICoordinateReader
     {

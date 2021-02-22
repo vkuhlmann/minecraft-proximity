@@ -170,8 +170,6 @@ namespace MinecraftProximity
                 )
             };
 
-            var overlayManager = discord.GetOverlayManager();
-
             CancellationTokenSource cancelPrintCoordsSource = new CancellationTokenSource();
             CancellationToken cancelPrintCoords = cancelPrintCoordsSource.Token;
             Task printLoop = DoPrintCoordsLoop(cancelPrintCoords);

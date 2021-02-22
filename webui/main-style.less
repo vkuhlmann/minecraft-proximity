@@ -1,0 +1,307 @@
+@import (less) "lib/bootstrap-5.0.0-beta1-dist/css/bootstrap.css";
+
+/* Based on Bootstrap .btn* styles */
+.button-action,
+.button-toggle {
+    border: 0.9px solid #343a40;
+    color: #fff;
+    font-weight: 400;
+    text-align: center;
+    vertical-align: middle;
+    user-select: none;
+    background-color: #343a40;
+    padding: .375rem .75rem;
+    font-size: 1rem;
+    line-height: 1.5;
+    border-radius: .25rem;
+    outline: none;
+
+    -webkit-transition: background-color 200ms ease;
+    -ms-transition: background-color 200ms ease;
+    transition: background-color 200ms ease, color 200ms ease;
+
+    -webkit-appearance: button;
+    margin: 0px;
+}
+
+.button-action:focus,
+.button-toggle:focus {
+    outline: 0 none black;
+}
+
+.button-action::-moz-focus-inner,
+.button-toggle::-moz-focus-inner {
+    border: 0;
+}
+
+.button-action:not(:disabled):not(.disabled),
+.button-toggle:not(:disabled):not(.disabled) {
+    cursor: pointer;
+}
+
+.button-action:hover,
+.button-toggle:hover:not(.toggled) {
+    /*color: #0069d9;*/
+    /*color: hsl(211, 100%, 25%);*/
+    color: #fff;
+    background-color: #23272b;
+    border-color: #1d2124;
+    text-decoration: none;
+}
+
+.button-toggle.toggled {
+    background-color: #0069d9;
+    color: #fff;
+    border-color: #0062cc;
+}
+
+.button-toggle.toggled.second-stage {
+    background-color: #218838;
+    color: #fff;
+    border-color: #218838;
+}
+
+.hide {
+    display: none !important;
+}
+
+.nav-link:not(:focus) .non-visual-context {
+    .visually-hidden();
+}
+
+:root {
+    --pixelswidth: 10;
+    --pixelsheight: 10;
+    --pixelsratio: calc(var(--pixelswidth) / var(--pixelsheight));
+    --pixelsview-atwidth-height: 80vh;
+    --pixelsview-atheight-width: 100vw;
+}
+
+.toolbar {
+    /*background-color: hsl(0, 0%, 98%);*/
+    border-radius: .5rem;
+}
+
+.toolbar>div {
+    margin: 10px 5px;
+}
+
+.overlay-container {
+    position: fixed;
+    display: none;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 2;
+    cursor: pointer;
+}
+
+.overlay-card {
+    cursor: auto;
+}
+
+.hide {
+    display: none !important;
+}
+
+.panels-container {
+    padding: 20px 15px;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: flex-start;
+    gap: 10px;
+    align-items: stretch;
+    min-height: 85vh;
+}
+
+.toolbar-content {
+    width: 100%;
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    list-style: none;
+    //gap: 10px;
+    gap: 0.1rem;
+    margin: 0px;
+    padding-left: 0px;
+}
+
+.pixelart-panel {
+    background-color: #ddd;
+    flex: 1 1 100vw;
+    max-height: 85vh;
+
+    &.resizable {
+        flex: 0 0 auto;
+    }
+
+    border-radius: 0.0rem;
+    box-shadow: 0pt 0pt 0pt 1.5pt hsl(22, 100%, 60%);
+}
+
+.mobile-hide {
+    @media only screen and (max-width: 575px) {
+        display: none;
+    }
+}
+
+.colormapper {
+    .card();
+    flex: 0 0 auto;
+    display: flex;
+    flex-flow: column nowrap;
+    padding: 8px;
+    gap: 8px;
+}
+
+.colormapper-entry {
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    padding: 0px;
+    gap: 5px;
+}
+
+.mapping-color-holder {
+    //background-color:hsl(0, 90%, 70%);
+    background-color: hsl(0, 90%, 90%);
+    padding: 0px;
+    line-height: 1.0;
+    min-width: 30px;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    justify-content: center;
+    color: black;
+    font-weight: bold;
+}
+
+.mapping-details {
+    flex: 1 1 auto;
+    display: flex;
+    //padding-right: 0.5rem;
+}
+
+.configuration-panel {
+    flex: 1 0 30ch;
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: stretch;
+    gap: 10px;
+
+    &.resizable {
+        flex: 0 0 auto;
+    }
+}
+
+.coloroption {
+    padding: 0.4rem;
+    border-radius: 0.25rem;
+
+    .colordisplay {
+        display: block;
+        width: 2rem;
+        height: 2rem;
+        padding: 0.5rem;
+        border-radius: .15rem;
+        background-color: red;
+        outline: none;
+        border: none;
+        text-transform: none;
+        overflow: hidden;
+    }
+
+    &.coloroption-new,
+    &.coloroption-pan,
+    &.coloroption-resize {
+        .colordisplay {
+            background-color: #fff;
+            display: flex;
+            flex-flow: column nowrap;
+            justify-content: center;
+            align-items: center;
+            align-content: center;
+            padding: 0.0rem;
+        }
+    }
+
+    &.coloroption-selected {
+        background-color: #fff;
+        //border: 3px solid black;
+        box-shadow: 0pt 0pt 0pt 2pt hsl(22, 100%, 60%) inset;
+    }
+
+    &.coloroption-new-choose {
+        box-shadow: 0pt 0pt 0pt 3pt hsl(0, 100%, 60%) inset;
+    }
+}
+
+.colorselector {
+    display: flex;
+    flex-flow: row wrap;
+    align-items: center;
+    align-content: center;
+    gap: 0.1rem;
+}
+
+.coloroptions {
+    display: contents;
+}
+
+.splitter {
+    flex: 0 0 auto;
+    padding-top: 10%;
+    padding-bottom: 10%;
+    cursor: col-resize;
+    margin-left: -10px;
+    margin-right: -10px;
+    padding-left: 10px;
+    padding-right: 10px;
+
+    div {
+        height: 100%;
+        width: 4px;
+        border-radius: 2px;
+        background-color: #ddd;
+    }
+}
+
+
+
+@media only screen and (max-width: 120ch) {
+    .panels-container {
+        flex-flow: column nowrap;
+    }
+
+    .pixelart-panel {
+        flex: 1 1 var(--pixelsview-atwidth-height);
+    }
+
+    .splitter {
+        display: none;
+    }
+
+    .configuration-panel {
+        flex: 0 0 auto;
+    }
+}
+
+@media only screen and (max-width: 120ch) {
+    .colormapper {
+        flex: 0 1 auto;
+    }
+
+    .configuration-panel {
+        flex-flow: row nowrap;
+    }
+}
+
+@media only screen and (max-width: 60ch) {
+    .configuration-panel {
+        flex-flow: column nowrap;
+    }
+}

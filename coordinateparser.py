@@ -9,7 +9,6 @@ import time
 
 # pip install Pillow
 # pip install screeninfo
-# pip install PyAudio-*.whl
 # pip install numpy
 
 WHITE_COLOR = (252, 252, 252)

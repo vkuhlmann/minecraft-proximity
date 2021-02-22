@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<!--
+    Copyright (c) 2021 Vincent Kuhlmann
+-->
+
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Early build UI</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet/less" type="text/css" href="main-style.less" />
+    <!--<script src="//cdn.jsdelivr.net/npm/less"></script>-->
+    <script src="lib/less.js"></script>
+
+    <!--<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">-->
+    <script src="lib/jquery.min.js"></script>
+    <script src="lib/popper.min.js"></script>
+    <script src="lib/bootstrap-5.0.0-beta1-dist/js/bootstrap.min.js"></script>
+    <!-- <script src="lib/bmp-js/decoder.js"></script>
+    <script src="lib/bmp-js/encoder.js"></script> -->
+    <!-- <script src="lib/fast-png/PNGDecoder.ts"></script> -->
+    <!-- <script src="lib/pako/pako.min.js"></script>
+    <script src="lib/pako/pako_deflate.min.js"></script>
+    <script src="lib/pako/pako_inflate.min.js"></script> -->
+    <script src="lib/UZIP.js/UZIP.js"></script>
+    <script src="lib/UPNG/UPNG.js"></script>
+    <script src="utils.js"></script>
+    <script src="colormapper.js"></script>
+    <script src="diagram.js"></script>
+    <script src="colorselection.js"></script>
+    <script src="panAndZoom.js"></script>
+    <script src="resizing.js"></script>
+    <script src="layout.js"></script>
+
+    <!-- Pickr themes -->
+    <!--<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/classic.min.css" />-->
+    <link rel="stylesheet" href="lib/pickr/classic.min.css" />
+    <!-- 'classic' theme -->
+    <!--<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/monolith.min.css"/>-->
+    <!-- 'monolith' theme -->
+    <!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css"/> -->
+    <!-- 'nano' theme -->
+
+    <script src="lib/pickr/pickr.min.js"></script>
+</head>
+
+<body>
+    <nav class="navbar navbar-light bg-light">
+        <div class="container-fluid">
+            <!--<div class="collapse navbar-collapse" id="navbarSupportedContent">-->
+            <div class="navbar-nav" style="flex:1 1 auto;">
+                <!-- class="navbar-nav mr-auto" style="gap:10px;" -->
+                <ul class="toolbar-content">
+                    <!-- <li class="nav-item active">
+                        <a class="nav-link" href="#">WIP</a>
+                    </li> -->
+
+                    <li class="nav-item" style="margin-right:5px;">
+                        <button type="button" class="button-toggle" id="importImage"
+                            style="display:flex;flex-flow:row nowrap;align-items:center;">
+                            <span style="margin-left:5px;">Load</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" style="margin-right:0px;">
+                        <button type="button" class="button-toggle" id="saveImage"
+                            style="display:flex;flex-flow:row nowrap;align-items:center;">
+                            <span style="margin-left:5px;">Save</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" style="
+                        display:block;width:2px;height:25px;
+                        background-color:#ccc;border-radius:1px;
+                        margin-left:10px;margin-right:10px;">
+                    </li>
+                    <li class="nav-item colorselector" style="display:contents;" id="colorSelector">
+                        <div class="coloroption coloroption-pan">
+                            <button type="button" role="button" class="colordisplay" id="panButton">
+                                <svg xmlns="http://www.w3.org/2000/svg" height="100%" viewBox="0 0 16 16">
+                                    <!-- <style>
+                                        :root {
+                                            --stripes-partial-height: 1.0;
+                                            --stripes-abs-height: calc(var(--stripes-partial-height) * 3.5355);
+                                        }
+                                    </style> -->
+                                    <defs>
+                                        <pattern id="stripes" viewBox="0,0,10,10" width="70%" height="70%">
+                                            <!--<polygon points="0,0 2,5 0,10 5,8 10,10 8,5 10,0 5,2"/>-->
+                                            <!--<polygon points="0,0 2,5 0,10 5,8 10,10 8,5 10,0 5,2"/>-->
+                                            <!--
+                                            import math
+                                            partialHeight = 1.0
+                                            absHeight = partialHeight * 5 / math.sqrt(2)
+                                            
+                                            width = 15 [\simeq \sqrt{2}] + height = 20, x = 5 - width/2 = -5 -->
+                                            <rect x="-5" y="2.5" width="20" height="3.536" transform="rotate(45 5 5)"
+                                                fill="#eee" />
+                                            <rect x="-5" y="2.5" width="20" height="3.536"
+                                                transform="translate(-10 0)rotate(45 5 5)" fill="#eee" />
+                                            <rect x="-5" y="2.5" width="20" height="3.536"
+                                                transform="translate(10 0)rotate(45 5 5)" fill="#eee" />
+                                        </pattern>
+                                    </defs>
+                                    <rect x="0" y="0" width="16" height="16" fill="url(#stripes)" />
+
+                                    <g transform="translate(8, 8)scale(0.7, 0.7)translate(-8, -8)">
+                                        <path fill-rule="evenodd" stroke="none" fill="currentColor"
+                                            d="M7.646.146a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 1.707V5.5a.5.5 0 0 1-1 0V1.707L6.354 2.854a.5.5 0 1 1-.708-.708l2-2zM8 10a.5.5 0 0 1 .5.5v3.793l1.146-1.147a.5.5 0 0 1 .708.708l-2 2a.5.5 0 0 1-.708 0l-2-2a.5.5 0 0 1 .708-.708L7.5 14.293V10.5A.5.5 0 0 1 8 10zM.146 8.354a.5.5 0 0 1 0-.708l2-2a.5.5 0 1 1 .708.708L1.707 7.5H5.5a.5.5 0 0 1 0 1H1.707l1.147 1.146a.5.5 0 0 1-.708.708l-2-2zM10 8a.5.5 0 0 1 .5-.5h3.793l-1.147-1.146a.5.5 0 0 1 .708-.708l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L14.293 8.5H10.5A.5.5 0 0 1 10 8z" />
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+                        <div class="coloroption coloroption-resize" style="display:none;">
+                            <button type="button" role="button" class="colordisplay" id="resizeButton">
+                                <svg xmlns="http://www.w3.org/2000/svg" height="100%" viewBox="0 0 16 16">
+                                    <!-- <style>
+                                        :root {
+                                            --stripes-partial-height: 1.0;
+                                            --stripes-abs-height: calc(var(--stripes-partial-height) * 3.5355);
+                                        }
+                                    </style> -->
+                                    <defs>
+                                        <pattern id="stripes" viewBox="0,0,10,10" width="70%" height="70%">
+                                            <!--<polygon points="0,0 2,5 0,10 5,8 10,10 8,5 10,0 5,2"/>-->
+                                            <!--<polygon points="0,0 2,5 0,10 5,8 10,10 8,5 10,0 5,2"/>-->
+                                            <!--
+                                            import math
+                                            partialHeight = 1.0
+                                            absHeight = partialHeight * 5 / math.sqrt(2)
+                                            
+                                            width = 15 [\simeq \sqrt{2}] + height = 20, x = 5 - width/2 = -5 -->
+                                            <rect x="-5" y="2.5" width="20" height="3.536" transform="rotate(45 5 5)"
+                                                fill="#eee" />
+                                            <rect x="-5" y="2.5" width="20" height="3.536"
+                                                transform="translate(-10 0)rotate(45 5 5)" fill="#eee" />
+                                            <rect x="-5" y="2.5" width="20" height="3.536"
+                                                transform="translate(10 0)rotate(45 5 5)" fill="#eee" />
+                                        </pattern>
+                                    </defs>
+                                    <rect x="0" y="0" width="16" height="16" fill="url(#stripes)" />
+
+                                    <g transform="translate(8, 8)scale(0.7, 0.7)translate(-8, -8)">
+                                        <text text-anchor="middle" x="8" y="13" style="font-size:14px;">R</text>
+                                        <!--<path fill-rule="evenodd" stroke="none" fill="currentColor"
+                                            d="M7.646.146a.5.5 0 0 1 .708 0l2 2a.5.5 0 0 1-.708.708L8.5 1.707V5.5a.5.5 0 0 1-1 0V1.707L6.354 2.854a.5.5 0 1 1-.708-.708l2-2zM8 10a.5.5 0 0 1 .5.5v3.793l1.146-1.147a.5.5 0 0 1 .708.708l-2 2a.5.5 0 0 1-.708 0l-2-2a.5.5 0 0 1 .708-.708L7.5 14.293V10.5A.5.5 0 0 1 8 10zM.146 8.354a.5.5 0 0 1 0-.708l2-2a.5.5 0 1 1 .708.708L1.707 7.5H5.5a.5.5 0 0 1 0 1H1.707l1.147 1.146a.5.5 0 0 1-.708.708l-2-2zM10 8a.5.5 0 0 1 .5-.5h3.793l-1.147-1.146a.5.5 0 0 1 .708-.708l2 2a.5.5 0 0 1 0 .708l-2 2a.5.5 0 0 1-.708-.708L14.293 8.5H10.5A.5.5 0 0 1 10 8z" />-->
+                                    </g>
+                                </svg>
+                            </button>
+                        </div>
+
+                        <div data-id="dynamicOptions" class="coloroptions">
+
+                        </div>
+                        <div class="coloroption coloroption-new-choose hide" id="newColorChooserContainer">
+                            <!--<input type="color" data-binding="color" id="newColorChooser" value="#ff0000">-->
+                            <button type="button" role="button" class="colordisplay" id="newColorChooser"></button>
+                        </div>
+                        <div class="coloroption coloroption-new">
+                            <button type="button" role="button" class="colordisplay" id="addColorButton">
+                                <svg xmlns="http://www.w3.org/2000/svg" height="100%" viewBox="0 0 16 16">
+                                    <!-- <style>
+                                        :root {
+                                            --stripes-partial-height: 1.0;
+                                            --stripes-abs-height: calc(var(--stripes-partial-height) * 3.5355);
+                                        }
+                                    </style> -->
+                                    <defs>
+                                        <pattern id="stripes" viewBox="0,0,10,10" width="70%" height="70%">
+                                            <!--<polygon points="0,0 2,5 0,10 5,8 10,10 8,5 10,0 5,2"/>-->
+                                            <!--<polygon points="0,0 2,5 0,10 5,8 10,10 8,5 10,0 5,2"/>-->
+                                            <!--
+                                            import math
+                                            partialHeight = 1.0
+                                            absHeight = partialHeight * 5 / math.sqrt(2)
+                                            
+                                            width = 15 [\simeq \sqrt{2}] + height = 20, x = 5 - width/2 = -5 -->
+                                            <rect x="-5" y="2.5" width="20" height="3.536" transform="rotate(45 5 5)"
+                                                fill="#eee" />
+                                            <rect x="-5" y="2.5" width="20" height="3.536"
+                                                transform="translate(-10 0)rotate(45 5 5)" fill="#eee" />
+                                            <rect x="-5" y="2.5" width="20" height="3.536"
+                                                transform="translate(10 0)rotate(45 5 5)" fill="#eee" />
+                                        </pattern>
+                                    </defs>
+                                    <rect x="0" y="0" width="16" height="16" fill="url(#stripes)" />
+                                    <path d="M 4 8 H 12 M 8 4 V 12"
+                                        style="stroke:currentColor;stroke-width:1.5;stroke-linecap:round;" />
+                                </svg>
+                            </button>
+                        </div>
+                        <!--<button type="button" class="button-toggle" id="importImage"
+                            style="display:flex;flex-flow:row nowrap;align-items:center;">
+                            <span style="margin-left:5px;">Import image</span>
+                        </button>-->
+
+                    </li>
+                </ul>
+            </div>
+            <a class="navbar-brand mobile-hide" href="/">Early build UI</a>
+            <!--</div>-->
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="panels-container" id="panelsContainer">
+            <div id="pixelartPanel" class="pixelart-panel">
+                <svg style="width:100%;height:100%;touch-action:none;" id="pixelartSvg"
+                    preserveAspectRatio="xMinYMid meet" class="pannable-diagram">
+                    <!--<rect id="svgBackground" style="width:100%;height:100%;fill:#ddd;" />-->
+                    <!--<svg width="100%" height="100%" preserveAspectRatio="xMinYMid meet" id="drawingContainerSvg"
+                        style="touch-action:none;" class="pannable-diagram">-->
+                    <g id="svgContent">
+                        <g id="pannableContent">
+                            <g id="svgPixels">
+
+                            </g>
+                            <g id="resizeFrame" style="visibility:hidden;">
+                                <rect id="resizeBox" x="0" y="0" width="100" height="100" fill="none"
+                                    stroke="hsl(122, 50%, 50%)" style="stroke-width:12.5px;" rx="12.5" ry="12.5" />
+                                <rect id="resizeBox2" x="0" y="0" width="100" height="100" fill="none"
+                                    stroke="hsl(122, 50%, 32%)" style="stroke-width:5px;" rx="12.5" ry="12.5" />
+                                <g id="handleRight">
+                                    <circle r="15" cx="0" cy="0" fill="hsl(122, 100%, 47%)" style="cursor:ew-resize;" />
+                                </g>
+                                <g id="handleBottom">
+                                    <circle r="15" cx="0" cy="0" fill="hsl(122, 100%, 47%)" style="cursor:ns-resize;" />
+                                </g>                                
+                            </g>
+                        </g>
+                        <circle cx="0" cy="0" style="visibility:hidden;" r="30" fill="red" id="pointerVisual0" />
+                        <circle cx="0" cy="0" style="visibility:hidden;" r="30" fill="green" id="pointerVisual1" />
+                    </g>
+                    <!--</svg>-->
+                </svg>
+                <!-- <div id="splitter" class="splitter">
+                </div> -->
+            </div>
+            <div id="splitter" class="splitter">
+                <div></div>
+            </div>
+            <div id="configurationPanel" class="configuration-panel">
+                <div style="flex:1 0 auto;display:flex;flex-flow:column nowrap;">
+                    <textarea class="form-control" id="outputArea" rows="12" style="flex:1 0 auto;display:block;"
+                        readonly="readonly"></textarea>
+                    <button type="button" class="button-action" style="flex:0 0 auto;"
+                        id="copyOutputButton">Copy</button>
+                </div>
+                <div id="mapper">
+
+                </div>
+            </div>
+        </div>
+        <div id="importImageOverlay" class="overlay-container" style="display:none;flex-flow:row wrap;justify-content:center;align-items:center;
+        align-content:center;">
+            <div class="card overlay-card" style="width:40rem;width:min(90vw,40rem);">
+                <div class="card-body">
+                    <h5 class="card-title">Import image</h5>
+                    <p class="card-text">
+                        Only png images are supported.
+                    </p>
+
+                    <form id="fileImportForm">
+                        <div class="form-group" style="margin-bottom:10px;">
+                            <label for="selectedImportFile">Choose image to import</label>
+                            <input class="form-control" id="selectedImportFile" type="file" accept=".png">
+                        </div>
+                        <!--<div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="clearOnImport" autocomplete="off" checked="checked">
+                            <label class="form-check-label" for="clearOnImport">Clear current scene</label>
+                        </div>-->
+                        <div class="form-group">
+                            <button id="doFileImport" class="button-action form-control" type="submit">Import</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

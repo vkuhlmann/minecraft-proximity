@@ -12,6 +12,7 @@ using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Runtime.InteropServices;
 
 namespace discordGame
 {
@@ -112,8 +113,6 @@ namespace discordGame
 
             var activityManager = discord.GetActivityManager();
 
-            // Received when someone accepts a request to join or invite.
-            // Use secrets to receive back the information needed to add the user to the group/party/match
             activityManager.OnActivityJoin += secret =>
             {
                 nextTasks.Enqueue(async () =>
@@ -124,60 +123,36 @@ namespace discordGame
                         Log.Information("Disconnecting from previous lobby");
                         await currentLobby.Disconnect();
                     }
-                    //await currentLobby?.Disconnect();
 
-                    //Log.Information($"Joining activity {secret}");
                     currentLobby = await VoiceLobby.FromSecret(secret);
                     client?.Stop();
                     client = new LogicClient(currentLobby);
                 });
-
-                //lobbyManager.ConnectLobbyWithActivitySecret(secret, (Discord.Result result, ref Discord.Lobby lobby) =>
-                //{
-                //	Console.WriteLine("Connected to lobby: {0}", lobby.Id);
-                //	lobbyManager.ConnectNetwork(lobby.Id);
-                //	lobbyManager.OpenNetworkChannel(lobby.Id, 0, true);
-                //	foreach (var user in lobbyManager.GetMemberUsers(lobby.Id))
-                //	{
-                //		lobbyManager.SendNetworkMessage(lobby.Id, user.Id, 0,
-                //			Encoding.UTF8.GetBytes(String.Format("Hello, {0}!", user.Username)));
-                //	}
-                //	UpdateActivity(discord, lobby);
-                //});
             };
 
-            // A join request has been received. Render the request on the UI.
             activityManager.OnActivityJoinRequest += (ref Discord.User user) =>
             {
-                //Console.WriteLine("OnJoinRequest {0} {1}", user.Id, user.Username);
-                //Log.Information($"User {user.Username} ({user.Id}) is requesting to join!");
                 Log.Information("User {Username}#{Discriminator} is requesting to join.", user.Username, user.Discriminator);
                 Log.Information("The request can be reviewed from within Discord.");
             };
-            // An invite has been received. Consider rendering the user / activity on the UI.
+
             activityManager.OnActivityInvite += (Discord.ActivityActionType Type, ref Discord.User user, ref Discord.Activity activity2) =>
             {
                 Log.Information("Received invite from {Username}#{Discriminator} to {Type} {activity2.Name}.", user.Username, user.Discriminator);
                 Log.Information("The invite can be accepted from within Discord.");
-                //Console.WriteLine("OnInvite {0} {1} {2}", Type, user.Username, activity2.Name);
-                // activityManager.AcceptInvite(user.Id, result =>
-                // {
-                //     Console.WriteLine("AcceptInvite {0}", result);
-                // });
             };
 
-            string path = System.Reflection.Assembly.GetEntryAssembly().Location;
-            path = Path.Combine(Directory.GetParent(path).FullName, "discordGame.exe");
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                string path = System.Reflection.Assembly.GetEntryAssembly().Location;
+                path = Path.Combine(Directory.GetParent(path).FullName, "MinecraftProximity.exe");
 
-            string launchCommand = $"\"{path}\"";
-            Log.Verbose("Registering launchCommand: {LaunchCommand}", launchCommand);
-            activityManager.RegisterCommand(launchCommand);
+                string launchCommand = $"\"{path}\"";
+                Log.Verbose("Registering launchCommand: {LaunchCommand}", launchCommand);
+                activityManager.RegisterCommand(launchCommand);
+            }
 
             var userManager = discord.GetUserManager();
-            // The auth manager fires events as information about the current user changes.
-            // This event will fire once on init.
-            //
-            // GetCurrentUser will error until this fires once.
             userManager.OnCurrentUserUpdate += () =>
             {
                 var currentUser = userManager.GetCurrentUser();

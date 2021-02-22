@@ -1,6 +1,3 @@
-/discordGame/obj
-/discordGame/bin
-/discordGame/.vs
 __pycache__/
 .vscode/
 localNotes.txt

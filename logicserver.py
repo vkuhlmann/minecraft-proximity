@@ -1,6 +1,7 @@
 
 import numpy as np
 import densitymap
+import re
 
 class Obscuration:
     def __init__(self, lowCorner, highCorner, transmissionCoeff):
@@ -94,7 +95,29 @@ class LogicServer:
 
             print("Updated map")
             return True
+        elif cmdName == "topleft":
+            self.HandleTopLeftCommand(args)
+            return True
         return False
+
+    def HandleTopLeftCommand(self, args):
+        m = re.fullmatch(r"((?P<x>(\+|-|)\d+) (?P<z>(\+|-|)\d+))?", args)
+        if m is None:
+            print("Invalid syntax. Syntax is")
+            print("topleft [<x> <z>]")
+            return
+        if m.group("x") is None:
+            print(f"topleft is {densitymap.densityMap.x}, {densitymap.densityMap.z}")
+            return
+        x = int(m.group("x"))
+        z = int(m.group("z"))
+        prevX = densitymap.densityMap.x
+        prevZ = densitymap.densityMap.z
+
+        densitymap.densityMap.x = x
+        densitymap.densityMap.z = z
+
+        print(f"topleft is now {densitymap.densityMap.x}, {densitymap.densityMap.z} (was {prevX}, {prevZ})")
 
     @staticmethod
     def Create():
@@ -125,7 +148,11 @@ class LogicServer:
         #     except Exception as ex:
         #         print(f"Error setting player position: {ex}")
 
-        self.positions[base["username"]] = basePos or np.array([0, 0, 0])
+        if base["username"] not in self.positions:
+            self.positions[base["username"]] = np.array([0, 0, 0])
+
+        if basePos is not None:
+            self.positions[base["username"]] = basePos
 
         if basePos is None or othPos is None:
             return 1.0

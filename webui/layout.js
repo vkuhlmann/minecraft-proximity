@@ -312,7 +312,7 @@ const parseRGBARegex = new RegExp(
 
 
 function tryOpenSocket() {
-    debugger;
+    //debugger;
     socket = new WebSocket("ws://127.0.0.1:6789");
     socket.onopen = e => {
         console.log("[open] Connection established");
@@ -359,20 +359,29 @@ function updatePlayerCoords(data) {
     //debugger;
     for (let pl of data) {
         let el = null;
-        if (!(pl in playerPos)) {
+        if (playerPos[pl.name] == null) {
             el = createTemplateInstance("template-pointmarker", diagram.pannableContent.el);
+            let obj = {el: el, name: pl.name, x: pl.x, z: pl.z};
+            obj.label = obj.name;
+            bindElements(el, [obj]);
+            updateBinding(obj, "label");
+
             activateTemplateInstance(el);
 
             //playerPos[pl] = {el: playerIndicator.content.children[0].cloneNode(true)};
-            playerPos[pl] = {el: el};
+            playerPos[pl.name] = obj;
             //diagram.pannableContent.el.appendChild(playerPos[pl].el);
             console.log("Appended new playerPos element");
         }
-        let els = playerPos[pl].el;
-        let x = pl.x * diagram.tileSize;
-        let y = pl.z * diagram.tileSize;
+        let obj = playerPos[pl.name];
+        obj.x = pl.x;
+        obj.z = pl.z;
 
-        els.setAttribute("transform", `translate(${x} ${y})scale(1)`);
+        el = obj.el;
+        let x = obj.x * diagram.tileSize;
+        let y = obj.z * diagram.tileSize;
+
+        el.setAttribute("transform", `translate(${x} ${y})scale(1)`);
     }
     //console.log(JSON.stringify(data));
 }

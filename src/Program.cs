@@ -23,6 +23,7 @@ namespace MinecraftProximity
         public static long currentUserId;
         public static LogicClient client;
         public static LogicServer server;
+        public static WebUI webUI;
 
         // Based on Discord Game DSK example:
         // discord_game_sdk.zip/examples/csharp/Program.cs
@@ -71,6 +72,7 @@ namespace MinecraftProximity
             nextTasks = new ConcurrentQueue<Func<Task>>();
             client = null;
             server = null;
+            webUI = null;
 
             var clientID = "804643036755001365";
 

@@ -1,7 +1,8 @@
 
 import numpy as np
-import densitymap
+#import densitymap
 import re
+import json
 
 class Obscuration:
     def __init__(self, lowCorner, highCorner, transmissionCoeff):
@@ -48,22 +49,23 @@ class Obscuration:
         dist = np.linalg.norm(highRay - lowRay)
         return np.exp(np.log(self.transmissionCoeff) * dist)
 
-def generateObscurations(l, dens):
-    l.clear()
-    for v in range(len(dens.densities)):
-        for u in range(len(dens.densities[v])):
-            x = u + dens.x
-            y = v + dens.z
-            coeff = dens.densities[v][u]
-            if coeff >= 0.95:
-                continue
+# def generateObscurations(l, dens):
+#     l.clear()
+#     for v in range(len(dens.densities)):
+#         for u in range(len(dens.densities[v])):
+#             x = u + dens.x
+#             y = v + dens.z
+#             coeff = dens.densities[v][u]
+#             if coeff >= 0.95:
+#                 continue
 
-            l.append(Obscuration(
-                np.array([x, 0, y]),
-                np.array([x + 1, 255, y + 1]),
-                transmissionCoeff=coeff
-            ))
-    #print(f"Obscurations are now\n{l}")
+#             l.append(Obscuration(
+#                 np.array([x, 0, y]),
+#                 np.array([x + 1, 255, y + 1]),
+#                 transmissionCoeff=coeff
+#             ))
+#     #print(f"Obscurations are now\n{l}")
+
 
 def create_server():
     return LogicServer()
@@ -93,57 +95,78 @@ class LogicServer:
             np.array([93, 58, -53]),
             transmissionCoeff=0.1)]
 
-        densitymap.densityMap.onUpdate = lambda: generateObscurations(self.obscurations, densitymap.densityMap)
+        #densitymap.densityMap.onUpdate = lambda: generateObscurations(self.obscurations, densitymap.densityMap)
         self.prevBase = None
 
         self.positions = {}
+
+    def clear_obscurations(self):
+        self.obscurations = []
+
+    def add_density_map(self, data):
+        data = json.loads(data)
+
+        for v in range(len(data["pixelart"])):
+            for u in range(len(data["pixelart"][v])):
+                x = u + data["x"]
+                y = v + data["z"]
+                coeff = data["toCoefficient"][data["pixelart"][v][u]] #data.pixelart[v][u]
+                if coeff >= 0.95:
+                    continue
+
+                self.obscurations.append(Obscuration(
+                    np.array([x, 0, y]),
+                    np.array([x + 1, 255, y + 1]),
+                    transmissionCoeff=coeff
+                ))
+        print(f"Obscurations is {self.obscurations}")
 
     def create_player(self, di):
         #return LogicServer.PlayerFromDict(di)
         return Player(di, self)
         
     def shutdown(self):
-        print("Shutting down Python LogicServer")
-        densitymap.isQuitRequested = True
-        #densitymap.loop.call_soon_threadsafe(densitymap.loop.stop)
-        densitymap.thr.join()
-        densitymap.loop.call_soon_threadsafe(densitymap.loop.stop)
+        # print("Shutting down Python LogicServer")
+        # densitymap.isQuitRequested = True
+        # #densitymap.loop.call_soon_threadsafe(densitymap.loop.stop)
+        # densitymap.thr.join()
+        # densitymap.loop.call_soon_threadsafe(densitymap.loop.stop)
         print("Shut down Python LogicServer")
 
 
     def handle_command(self, cmdName, args):
-        print(f"Received command {cmdName} with args {args}")
-        if cmdName == "updatemap":
-            print("Updating map...")
-            for username, pos in self.positions.items():
-                densitymap.densityMap.setPlayerPosition(username, pos[0], pos[2])
-                print(f"Submitted player {username} (x={pos[0]}, z={pos[2]})")
+        #print(f"Received command {cmdName} with args '{args}'")
+        # if cmdName == "updatemap":
+        #     print("Updating map...")
+        #     for username, pos in self.positions.items():
+        #         densitymap.densityMap.setPlayerPosition(username, pos[0], pos[2])
+        #         print(f"Submitted player {username} (x={pos[0]}, z={pos[2]})")
 
-            print("Updated map")
-            return True
-        elif cmdName == "topleft":
-            self.HandleTopLeftCommand(args)
-            return True
+        #     print("Updated map")
+        #     return True
+        # if cmdName == "topleft":
+        #     self.HandleTopLeftCommand(args)
+        #     return True
         return False
 
-    def HandleTopLeftCommand(self, args):
-        m = re.fullmatch(r"((?P<x>(\+|-|)\d+) (?P<z>(\+|-|)\d+))?", args)
-        if m is None:
-            print("Invalid syntax. Syntax is")
-            print("topleft [<x> <z>]")
-            return
-        if m.group("x") is None:
-            print(f"topleft is {densitymap.densityMap.x}, {densitymap.densityMap.z}")
-            return
-        x = int(m.group("x"))
-        z = int(m.group("z"))
-        prevX = densitymap.densityMap.x
-        prevZ = densitymap.densityMap.z
+    # def HandleTopLeftCommand(self, args):
+    #     m = re.fullmatch(r"((?P<x>(\+|-|)\d+) (?P<z>(\+|-|)\d+))?", args)
+    #     if m is None:
+    #         print("Invalid syntax. Syntax is")
+    #         print("topleft [<x> <z>]")
+    #         return
+    #     if m.group("x") is None:
+    #         print(f"topleft is {densitymap.densityMap.x}, {densitymap.densityMap.z}")
+    #         return
+    #     x = int(m.group("x"))
+    #     z = int(m.group("z"))
+    #     prevX = densitymap.densityMap.x
+    #     prevZ = densitymap.densityMap.z
 
-        densitymap.densityMap.x = x
-        densitymap.densityMap.z = z
+    #     densitymap.densityMap.x = x
+    #     densitymap.densityMap.z = z
 
-        print(f"topleft is now {densitymap.densityMap.x}, {densitymap.densityMap.z} (was {prevX}, {prevZ})")
+    #     print(f"topleft is now {densitymap.densityMap.x}, {densitymap.densityMap.z} (was {prevX}, {prevZ})")
 
     @staticmethod
     def Create():

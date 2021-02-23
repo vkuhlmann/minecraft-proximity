@@ -108,98 +108,105 @@ namespace MinecraftProximity
 
             stopwatch.Start();
 
-            try
+            Task<Coords?> t = Task.Run(new Func<Task<Coords?>>(async () =>
             {
-                if (positioning != null)
+                try
                 {
-                    CoordinateReadPositioner.Positioning pos = positioning.Value;
-                    graphics.CopyFromScreen(new Point(pos.bbox.X, pos.bbox.Y), new Point(0, 0), pos.bbox.Size, CopyPixelOperation.SourceCopy);
-
-                    Coords? c = TryReadCoords(bitmap, new Point(pos.bbox.X, pos.bbox.Y));
-
-                    if (c != null)
-                        return c;
-                    //return Task.FromResult(c);
-
-
-                    Log.Warning("[CoordinateReader] Lost coordinates calibration");
-                    nextNotCalibratedWarning = Environment.TickCount64 + (long)notCalibratedWarningTimeout.TotalMilliseconds;
-                }
-
-                if (Environment.TickCount64 >= nextAllowedCalibrate)
-                {
-                    nextAllowedCalibrate = Environment.TickCount64 + (long)calibrateTimeout.TotalMilliseconds;
-
-                    //Rectangle[] rects = await PythonManager.GetScreenRects();
-                    //int minX = 0;
-                    //int minY = 0;
-                    //int maxX = 0;
-                    //int maxY = 0;
-
-                    //foreach (Rectangle r in rects)
-                    //{
-                    //    minX = Math.Min(minX, r.X);
-                    //    minY = Math.Min(minY, r.Y);
-                    //    maxX = Math.Max(maxX, r.X + r.Width);
-                    //    maxY = Math.Max(maxY, r.Y + r.Height);
-                    //}
-
-                    ////Log.Information("[CoordinateReader] Calibrating!");
-                    ////Rectangle screenBounds = new Rectangle(0, 0, 1920, 1080);
-                    //Rectangle screenBounds = new Rectangle(minX, minY, maxX - minX, maxY - minY);
-                    await RecalculateBounds();
-
-                    Rectangle screenBounds = bounds;
-
-                    if (bitmap.Width < screenBounds.Width || bitmap.Height < screenBounds.Height)
+                    if (positioning != null)
                     {
-                        graphics.Dispose();
-                        graphics = null;
-                        bitmap.Dispose();
-                        bitmap = null;
+                        CoordinateReadPositioner.Positioning pos = positioning.Value;
+                        graphics.CopyFromScreen(new Point(pos.bbox.X, pos.bbox.Y), new Point(0, 0), pos.bbox.Size, CopyPixelOperation.SourceCopy);
 
-                        bitmap = new Bitmap(screenBounds.Width, screenBounds.Height);
-                        graphics = Graphics.FromImage(bitmap);
-                    }
+                        Coords? c = TryReadCoords(bitmap, new Point(pos.bbox.X, pos.bbox.Y));
 
-                    graphics.CopyFromScreen(new Point(screenBounds.X, screenBounds.Y), new Point(0, 0), screenBounds.Size, CopyPixelOperation.SourceCopy);
-
-                    //Rectangle bounds = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
-                    Rectangle bitmapBounds = new Rectangle(new Point(0, 0), screenBounds.Size);
-
-                    //bitmap.Save("testimage.png");
-                    foreach (CoordinateReadPositioner.Positioning posRaw in CoordinateReadPositioner.FindPossiblePositions(bitmap,
-                        bitmapBounds))
-                    {
-                        CoordinateReadPositioner.Positioning pos = posRaw;
-                        pos.bbox.X += screenBounds.X;
-                        pos.bbox.Y += screenBounds.Y;
-                        positioning = pos;
-
-                        //string s = fontReader.Read(bitmap, pos.bbox, pos.scale);
-                        //Console.WriteLine($"Read [{s}]");
-                        Coords? c = TryReadCoords(bitmap, new Point(screenBounds.X, screenBounds.Y));
                         if (c != null)
-                        {
-                            Log.Information("[CoordinateReader] Acquired coordinates calibration");
-                            return c;//Task.FromResult(c);
-                        }
+                            return c;
+                        //return Task.FromResult(c);
+
+
+                        Log.Warning("[CoordinateReader] Lost coordinates calibration");
+                        nextNotCalibratedWarning = Environment.TickCount64 + (long)notCalibratedWarningTimeout.TotalMilliseconds;
                     }
 
-                    if (Environment.TickCount64 > nextNotCalibratedWarning)
+                    if (Environment.TickCount64 >= nextAllowedCalibrate)
                     {
-                        nextNotCalibratedWarning = Environment.TickCount64 + (long)notCalibratedWarningTimeout.TotalMilliseconds;
-                        Log.Information("[CoordinateReader] Can't read coordinates!");
+                        nextAllowedCalibrate = Environment.TickCount64 + (long)calibrateTimeout.TotalMilliseconds;
+
+                        //Rectangle[] rects = await PythonManager.GetScreenRects();
+                        //int minX = 0;
+                        //int minY = 0;
+                        //int maxX = 0;
+                        //int maxY = 0;
+
+                        //foreach (Rectangle r in rects)
+                        //{
+                        //    minX = Math.Min(minX, r.X);
+                        //    minY = Math.Min(minY, r.Y);
+                        //    maxX = Math.Max(maxX, r.X + r.Width);
+                        //    maxY = Math.Max(maxY, r.Y + r.Height);
+                        //}
+
+                        ////Log.Information("[CoordinateReader] Calibrating!");
+                        ////Rectangle screenBounds = new Rectangle(0, 0, 1920, 1080);
+                        //Rectangle screenBounds = new Rectangle(minX, minY, maxX - minX, maxY - minY);
+                        await RecalculateBounds();
+
+                        Rectangle screenBounds = bounds;
+
+                        if (bitmap.Width < screenBounds.Width || bitmap.Height < screenBounds.Height)
+                        {
+                            graphics.Dispose();
+                            graphics = null;
+                            bitmap.Dispose();
+                            bitmap = null;
+
+                            bitmap = new Bitmap(screenBounds.Width, screenBounds.Height);
+                            graphics = Graphics.FromImage(bitmap);
+                        }
+
+                        graphics.CopyFromScreen(new Point(screenBounds.X, screenBounds.Y), new Point(0, 0), screenBounds.Size, CopyPixelOperation.SourceCopy);
+
+                        //Rectangle bounds = new Rectangle(0, 0, bitmap.Width, bitmap.Height);
+                        Rectangle bitmapBounds = new Rectangle(new Point(0, 0), screenBounds.Size);
+
+                        //bitmap.Save("testimage.png");
+                        foreach (CoordinateReadPositioner.Positioning posRaw in CoordinateReadPositioner.FindPossiblePositions(bitmap,
+                            bitmapBounds))
+                        {
+                            CoordinateReadPositioner.Positioning pos = posRaw;
+                            pos.bbox.X += screenBounds.X;
+                            pos.bbox.Y += screenBounds.Y;
+                            positioning = pos;
+
+                            //string s = fontReader.Read(bitmap, pos.bbox, pos.scale);
+                            //Console.WriteLine($"Read [{s}]");
+                            Coords? c = TryReadCoords(bitmap, new Point(screenBounds.X, screenBounds.Y));
+                            if (c != null)
+                            {
+                                Log.Information("[CoordinateReader] Acquired coordinates calibration");
+                                return c;//Task.FromResult(c);
+                            }
+                        }
+
+                        nextAllowedCalibrate = Environment.TickCount64 + (long)calibrateTimeout.TotalMilliseconds;
+
+                        if (Environment.TickCount64 > nextNotCalibratedWarning)
+                        {
+                            nextNotCalibratedWarning = Environment.TickCount64 + (long)notCalibratedWarningTimeout.TotalMilliseconds;
+                            Log.Information("[CoordinateReader] Can't read coordinates!");
+                        }
+                        //bitmap.Save("testimageAnnotated.png");
                     }
-                    //bitmap.Save("testimageAnnotated.png");
                 }
-            }
-            finally
-            {
-                requests += 1;
-                stopwatch.Stop();
-            }
-            return null;
+                finally
+                {
+                    requests += 1;
+                    stopwatch.Stop();
+                }
+                return null;
+            }));
+            return await t;
+            //return null;
             //return Task.FromResult((Coords?)null);
         }
 

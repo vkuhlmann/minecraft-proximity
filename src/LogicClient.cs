@@ -34,13 +34,13 @@ namespace MinecraftProximity
 
     class LogicClient
     {
-        VoiceLobby voiceLobby;
+        public VoiceLobby voiceLobby { get; protected set; }
         Dictionary<long, Player> players;
 
         public ICoordinateReader coordsReader { get; protected set; }
 
         Coords coords;
-        long serverUser;
+        public long serverUser { get; protected set; }
         long ownUserId;
         public TimeSpan sendCoordsInterval { get; set; }
 
@@ -241,6 +241,10 @@ namespace MinecraftProximity
 
                 Log.Information("[Client] Changed server to user {UserId}", serverUser);
                 RefreshPlayers();
+            }
+            else if (action == "updatemap")
+            {
+                Program.webUI?.ReceiveUpdate(data["data"].ToString());
             }
             else
             {

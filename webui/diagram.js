@@ -235,7 +235,7 @@ class Diagram {
             -this.panOffset.y);// * card.diagramView.zoom);
     }
 
-    setPixel(x, y, id) {
+    async setPixel(x, y, id) {
         // if (x < 0 || y < 0 || y >= pixelart.length || x >= pixelart[y].length)
         //     return false;
         if (!(x >= 0 && y >= 0 && y < pixelart.length && x < pixelart[y].length))
@@ -244,7 +244,7 @@ class Diagram {
             return true;
         pixelart[y][x] = id;
         this.redraw();
-        onChanged();
+        await onChanged();
         return true;
     }
 

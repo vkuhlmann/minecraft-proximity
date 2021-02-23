@@ -48,9 +48,12 @@ namespace MinecraftProximity
         ConcurrentQueue<bool> transmitsProcessing;
 
         RepeatProfiler calculateVolumesProfiler;
+        bool isSettingMap;
 
         public LogicServer(VoiceLobby voiceLobby)
         {
+            isSettingMap = false;
+
             Log.Information("[Server] Initializing server...");
             this.voiceLobby = voiceLobby;
             playersMap = new Dictionary<long, ServerPlayer>();
@@ -205,8 +208,47 @@ namespace MinecraftProximity
                 }
                 break;
 
+                case "updatemap":
+                {
+                    SetMap(jObject["data"].Value<JObject>());
+                }
+                break;
+
                 default:
                     break;
+            }
+        }
+
+        private void SetMap(JObject data)
+        {
+            if (isSettingMap)
+                return;
+            isSettingMap = true;
+            try
+            {
+                using (Py.GIL())
+                {
+                    if (logicServerPy == null)
+                        return;
+
+                    logicServerPy.clear_obscurations();
+                    logicServerPy.add_density_map(data.ToString());
+                }
+
+                JObject message = JObject.FromObject(new
+                {
+                    action = "updatemap",
+                    data = data
+                });
+
+                foreach (ServerPlayer pl in playersMap.Values)
+                {
+                    voiceLobby.SendNetworkJson(pl.userId, 0, message);
+                }
+            }
+            finally
+            {
+                isSettingMap = false;
             }
         }
 

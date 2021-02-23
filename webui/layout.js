@@ -27,6 +27,8 @@ let pixelartText =
 let mapper = null;
 let colorselector = null;
 
+let isDirty = false;
+
 let pixelart = pixelartText.replace(/\n+$/, "").split("\n");
 
 for (let i in pixelart) {
@@ -124,6 +126,12 @@ function onDOMReady() {
     });
 
     tryOpenSocket();
+
+    // document.setInterval(() => {
+    //     if (isDirty) {
+
+    //     }
+    // }, 200);
 }
 
 // function resetSplitterWidth() {
@@ -225,6 +233,26 @@ function interpretImage(data, width, height) {
     mapper.update();
     colorselector.update();
 }
+
+function imagePut(data) {
+    pixelart = data.pixelart;
+    mapper.toCoefficient = data.toCoefficient;
+    mapper.toColor = data.toColor;
+
+    updateSVGDisplay();
+    mapper.update();
+    colorselector.update();
+}
+
+function imageGet() {
+    let data = {
+        pixelart: pixelart,
+        toCoefficient: mapper.toCoefficient,
+        toColor: mapper.toColor
+    };
+    return JSON.parse(JSON.stringify(data));
+}
+
 
 function increaseWidth(width, fillColorId = null) {
     let newPixelArt = [];
@@ -340,6 +368,12 @@ function handleMessage(json) {
             }
             break;
 
+        case "imageput": 
+            {
+                imagePut(json.data);
+            }
+            break;
+
         default:
             console.log(`Unknown message type ${json.type ?? "null"}`);
     }
@@ -387,20 +421,24 @@ function updatePlayerCoords(data) {
 }
 
 async function sendNewData() {
-    let data = [];
-    let map = mapper.toCoefficient;
-    let lines = pixelart;
-    for (let line of lines) {
-        let dat = [];
-        for (let ch of line) {
-            dat.push(map[ch]);
-        }
-        data.push(dat);
-    }
-    if (socket != null)
+    // let data = [];
+    // let map = mapper.toCoefficient;
+    // let lines = pixelart;
+    // for (let line of lines) {
+    //     let dat = [];
+    //     for (let ch of line) {
+    //         dat.push(map[ch]);
+    //     }
+    //     data.push(dat);
+    // }
+
+    if (socket != null) {
+        let data = imageGet();
         await socket.send(JSON.stringify({ "action": "updatemap", "data": data }));
-    else
+
+    } else {
         console.log("Socket is not open! Can't send new data.");
+    }
 }
 
 async function runCommand(comm) {
@@ -508,6 +546,7 @@ function setupOverlay() {
 }
 
 function onChanged() {
+    //isDirty = true;
     sendNewData();
 }
 

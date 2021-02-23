@@ -49,7 +49,8 @@ namespace MinecraftProximity
             { "doHost", DoDoHostCommand },
             { "broadcast", DoBroadcastCommand },
             { "screen", DoScreenCommand },
-            { "overlay", DoOverlayCommand }
+            { "overlay", DoOverlayCommand },
+            { "webUI", DoWebUICommand }
         };
 
         public static Dictionary<string, string> commandAliases = new Dictionary<string, string>
@@ -151,6 +152,33 @@ namespace MinecraftProximity
                         Console.WriteLine("The overlay has been opened in Discord");
                     }
                 });
+                await Task.CompletedTask;
+            });
+            await Task.CompletedTask;
+        }
+
+        static async Task DoWebUICommand(string argument)
+        {
+            Program.nextTasks.Enqueue(async () =>
+            {
+                if (argument == "start")
+                {
+                    if (Program.webUI != null)
+                    {
+                        Console.WriteLine("WebUI already exists!");
+                        return;
+                    }
+                    Program.webUI = new WebUI();
+                    Program.webUI.Start();
+                }
+                else if (argument == "stop")
+                {
+                    Program.webUI?.Stop();
+                }
+                else
+                {
+                    Console.WriteLine("Unknown subcommand");
+                }
                 await Task.CompletedTask;
             });
             await Task.CompletedTask;

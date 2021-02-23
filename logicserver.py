@@ -73,12 +73,27 @@ class LogicServer:
 
         densitymap.densityMap.onUpdate = lambda: generateObscurations(self.obscurations, densitymap.densityMap)
         self.prevBase = None
+
+        self.positions = {}
         
     def Shutdown(self):
-        densitymap.loop.stop()
+        print("Shutting down Python LogicServer")
+        densitymap.isQuitRequested = True
+        densitymap.loop.call_soon_threadsafe(densitymap.loop.stop)
+        densitymap.thr.join()
+        print("Shut down Python LogicServer")
+
 
     def HandleCommand(self, cmdName, args):
         print(f"Received command {cmdName} with args {args}")
+        if cmdName == "updatemap":
+            print("Updating map...")
+            for username, pos in self.positions.items():
+                densitymap.densityMap.setPlayerPosition(username, pos[0], pos[2])
+                print(f"Submitted player {username} (x={pos[0]}, z={pos[2]})")
+
+            print("Updated map")
+            return True
         return False
 
     @staticmethod
@@ -97,16 +112,20 @@ class LogicServer:
     def GetVolume(self, base, oth):
         basePos = base["pos"]
         othPos = oth["pos"]
+        #self.callId += 1
 
-        if base != self.prevBase or True:
-            self.prevBase = base
-            try:
-                if basePos != None:
-                    densitymap.densityMap.setPlayerPosition(base["username"], basePos["x"], basePos["z"])
-                else:
-                    densitymap.densityMap.setPlayerPosition(base["username"], 0, 0)
-            except Exception as ex:
-                print(f"Error setting player position: {ex}")
+        # if base["username"] not in self.lastUpdatedTime or self.lastUpdatedTime[base["username"]] + 40 < self.callId:
+        #     self.lastUpdatedTime[base["username"]] = self.callId
+        #     #self.prevBase = base
+        #     try:
+        #         if basePos != None:
+        #             densitymap.densityMap.setPlayerPosition(base["username"], basePos[0], basePos[2])
+        #         else:
+        #             densitymap.densityMap.setPlayerPosition(base["username"], 0, 0)
+        #     except Exception as ex:
+        #         print(f"Error setting player position: {ex}")
+
+        self.positions[base["username"]] = basePos or np.array([0, 0, 0])
 
         if basePos is None or othPos is None:
             return 1.0

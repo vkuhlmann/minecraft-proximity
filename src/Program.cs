@@ -33,6 +33,7 @@ namespace MinecraftProximity
         static bool createLobby = true;
         public static bool isQuitRequested = false;
         public static ConfigFile configFile;
+        public static ConcurrentQueue<(Task, CancellationTokenSource)> runningTasks;
 
         public static async Task createLobbyIfNone()
         {
@@ -56,9 +57,10 @@ namespace MinecraftProximity
 
         static async Task RunAsync(string[] args)
         {
+            runningTasks = new ConcurrentQueue<(Task, CancellationTokenSource)>();
             configFile = new ConfigFile("config.json");
 
-            if(!Legal.DoesUserAgree())
+            if (!Legal.DoesUserAgree())
             {
                 Console.WriteLine("The legal requirements have not been agreed upon, and hence the program must terminate.");
                 Console.WriteLine("Press any key to quit");
@@ -166,7 +168,7 @@ namespace MinecraftProximity
                 async () =>
                 {
                     await createLobbyIfNone();
-				}
+                }
                 )
             };
 
@@ -174,13 +176,20 @@ namespace MinecraftProximity
             CancellationToken cancelPrintCoords = cancelPrintCoordsSource.Token;
             Task printLoop = DoPrintCoordsLoop(cancelPrintCoords);
 
-            List<Task> runningTasks = new List<Task>();
-            Task delayingTask = Task.CompletedTask;
-
             CancellationTokenSource cancelExecLoopSource = new CancellationTokenSource();
             CancellationToken cancelExecLoop = cancelExecLoopSource.Token;
 
             Task execLoop = Task.Run(() => CommandHandler.DoHandleLoop(cancelExecLoop));
+
+            //List<Task> runningTasks = new List<Task>
+            //{
+            //    printLoop,
+            //    execLoop
+            //};
+            runningTasks.Enqueue((printLoop, cancelPrintCoordsSource));
+            runningTasks.Enqueue((execLoop, cancelExecLoopSource));
+
+            Task delayingTask = Task.CompletedTask;
 
             long errorBunchDur = (long)TimeSpan.FromSeconds(10).TotalMilliseconds;
             long errorBunchEnd = Environment.TickCount64 + errorBunchDur;
@@ -231,11 +240,30 @@ namespace MinecraftProximity
                         errorBunchEnd = Environment.TickCount64 + errorBunchDur;
                     }
 
-                    for (i = 0; i < runningTasks.Count; i++)
+                    int cycleAround = runningTasks.Count;
+                    //for (i = 0; i < runningTasks.Count; i++)
+                    //{
+                    for (i = 0; i < cycleAround; i++)
                     {
-                        Task t = runningTasks[i];
+                        (Task, CancellationTokenSource) res;
+                        if (!runningTasks.TryDequeue(out res))
+                            break;
+                        (Task t, CancellationTokenSource cancToken) = res;
+
+                        //Task t = runningTasks[i];
                         if (!t.IsCompleted)
+                        {
+                            if (isQuitRequested && cancToken != null)
+                            {
+                                cancToken.Cancel();
+                                runningTasks.Enqueue((t, null));
+                            }
+                            else
+                            {
+                                runningTasks.Enqueue((t, cancToken));
+                            }
                             continue;
+                        }
                         TaskStatus st = t.Status;
                         try
                         {
@@ -265,21 +293,22 @@ namespace MinecraftProximity
                                 Log.Warning("Hiding errors, max rate has been reached", ex.Message);
                             }
                         }
-                        runningTasks.Remove(t);
-                        i--;
+                        //runningTasks.Remove(t);
+                        //i--;
                     }
+
 
                     if (delayingTask.IsCompleted)
                     {
                         if (profiler.IsRunning())
                             profiler.Stop();
-                        runningTasks.Remove(delayingTask);
+                        //runningTasks.Remove(delayingTask);
 
                         if (nextTasks.TryDequeue(out Func<Task> b))
                         {
                             Task c = b();
                             delayingTask = c;
-                            runningTasks.Add(c);
+                            runningTasks.Enqueue((c, null));
                             profiler.Start();
                         }
                     }

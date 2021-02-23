@@ -208,6 +208,18 @@
             <div id="pixelartPanel" class="pixelart-panel">
                 <svg style="width:100%;height:100%;touch-action:none;" id="pixelartSvg"
                     preserveAspectRatio="xMinYMid meet" class="pannable-diagram">
+                    <defs>
+                        <g id="template-pointmarker">
+                            <circle cx="0" cy="0" r="5" data-id="centerpoint" fill="black" stroke="black" style="stroke-width:2;" />
+                            <text data-id="plainLabel" data-binding="label" x="0" y="-10"
+                                style="font:normal 18px sans-serif;text-anchor:middle;">Element
+                                a</text>
+                            <!--<g data-id="formattedLabel">
+
+                            </g>-->
+                        </g>
+                    </defs>
+
                     <!--<rect id="svgBackground" style="width:100%;height:100%;fill:#ddd;" />-->
                     <!--<svg width="100%" height="100%" preserveAspectRatio="xMinYMid meet" id="drawingContainerSvg"
                         style="touch-action:none;" class="pannable-diagram">-->

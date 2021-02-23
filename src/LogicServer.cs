@@ -68,27 +68,40 @@ namespace MinecraftProximity
             Task task = PythonManager.pythonSetupTask;
             task.Wait();
 
+            Exception exception = null;
             using (Py.GIL())
             {
-                scope = Py.CreateScope();
-                IEnumerable<string> imports = new List<string> { "sys", "numpy", "logicserver" };
-                Dictionary<string, dynamic> modules = new Dictionary<string, dynamic>();
-
-                foreach (string import in imports)
+                try
                 {
-                    modules[import] = scope.Import(import);
-                    //Console.WriteLine($"Imported {import}");
-                }
+                    scope = Py.CreateScope();
+                    IEnumerable<string> imports = new List<string> { "sys", "numpy", "logicserver" };
+                    Dictionary<string, dynamic> modules = new Dictionary<string, dynamic>();
 
-                dynamic mod = modules["logicserver"];
-                dynamic inst = mod.LogicServer.Create();
-                logicServerPy = inst;
+                    foreach (string import in imports)
+                    {
+                        modules[import] = scope.Import(import);
+                        //Console.WriteLine($"Imported {import}");
+                    }
+
+                    dynamic mod = modules["logicserver"];
+                    dynamic inst = mod.LogicServer.Create();
+                    logicServerPy = inst;
+                }
+                catch(Exception ex)
+                {
+                    exception = ex;
+                    Log.Error("Error initializing Python code for LogicServer: {Ex}", ex);
+                }
             }
+            if (exception != null)
+                throw exception;
 
             voiceLobby.onNetworkJson += VoiceLobby_onNetworkJson;
 
             cancelTransmitTask = new CancellationTokenSource();
             transmitTask = DoRecalcLoop(cancelTransmitTask.Token);
+            Program.runningTasks.Enqueue((transmitTask, cancelTransmitTask));
+
             Log.Information("[Server] Initialization done.");
         }
 
@@ -144,7 +157,7 @@ namespace MinecraftProximity
             }
             catch (Exception ex)
             {
-                Log.Error("Python raised an error trying to do HandleCommand: {Message}", ex.Message);
+                Log.Error("Python raised an error trying to do HandleCommand: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
                 return false;
             }
         }

@@ -358,16 +358,21 @@ let playerPos = {}
 function updatePlayerCoords(data) {
     //debugger;
     for (let pl of data) {
+        let el = null;
         if (!(pl in playerPos)) {
-            playerPos[pl] = {el: playerIndicator.content.children[0].cloneNode(true)};
-            diagram.pannableContent.el.appendChild(playerPos[pl].el);
+            el = createTemplateInstance("template-pointmarker", diagram.pannableContent.el);
+            activateTemplateInstance(el);
+
+            //playerPos[pl] = {el: playerIndicator.content.children[0].cloneNode(true)};
+            playerPos[pl] = {el: el};
+            //diagram.pannableContent.el.appendChild(playerPos[pl].el);
             console.log("Appended new playerPos element");
         }
         let els = playerPos[pl].el;
         let x = pl.x * diagram.tileSize;
         let y = pl.z * diagram.tileSize;
 
-        els.setAttribute("transform", `translate(${x} ${y})scale(30)`);
+        els.setAttribute("transform", `translate(${x} ${y})scale(1)`);
     }
     //console.log(JSON.stringify(data));
 }

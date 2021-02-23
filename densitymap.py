@@ -5,23 +5,41 @@ import logging
 import websockets
 import threading
 import numpy as np
+import queue
 
 logging.basicConfig()
 
-async def sendCoords(name, x, z):
-    if USERS:
-        message = json.dumps({
+scheduledMessages = queue.Queue()
+isQuitRequested = False
+
+def sendCoords(name, x, z):
+    scheduledMessages.put(
+        json.dumps({
             "type": "playercoords",
             "data": [
                 {
                     "name": name,
-                    "x": x,
-                    "z": z
+                    "x": float(x),
+                    "z": float(z)
                 }
             ]
         })
+    )
+    print(f"ScheduledMessage has now size {scheduledMessages.qsize()}")
 
-        await asyncio.wait([user.send(message) for user in USERS])
+    # if USERS:
+    #     message = json.dumps({
+    #         "type": "playercoords",
+    #         "data": [
+    #             {
+    #                 "name": name,
+    #                 "x": x,
+    #                 "z": z
+    #             }
+    #         ]
+    #     })
+
+    #     await asyncio.wait([user.send(message) for user in USERS])
 
 class DensityMap:
     def __init__(self):
@@ -47,7 +65,8 @@ class DensityMap:
 
     def setPlayerPosition(self, name, x, z):
         #loop.call_soon_threadsafe(asyncio.async, sendCoords(name, x - self.x, z - self.z))
-        asyncio.run_coroutine_threadsafe(sendCoords(name, x - self.x, z - self.z), loop)
+        #asyncio.run_coroutine_threadsafe(lambda:sendCoords(name, x - self.x, z - self.z), loop)
+        loop.call_soon_threadsafe(lambda:sendCoords(name, x - self.x, z - self.z))
 
     # def getFactor(self, rayFrom, rayTo):
     #     rayFrom = np.copy(rayFrom)
@@ -155,20 +174,40 @@ async def counter(websocket, path):
     finally:
         await unregister(websocket)
 
+
+async def doTimeUpdates():
+    try:
+        while not isQuitRequested:
+            await asyncio.sleep(0.2)
+            if scheduledMessages.qsize() > 0:
+                it = scheduledMessages.get()
+                print(f"Sending message to {len(USERS)} users:\n{it}")
+                if USERS:
+                    message = it
+                    await asyncio.wait([user.send(message) for user in USERS])
+
+
+    except Exception as e:
+        print(f"Exception doing updates: {e}")
+        return
+
 loop = asyncio.new_event_loop()
 
 
 async def DoUpdateMap(obj):
     densityMap.setDensities(obj)
 
-#def DoDensityMapServer():
-asyncio.set_event_loop(loop)
-start_server = websockets.serve(counter, "localhost", 6789)
+def DoDensityMapServer():
+    asyncio.set_event_loop(loop)
+    start_server = websockets.serve(counter, "localhost", 6789)
 
-print("Starting server!")
-asyncio.get_event_loop().run_until_complete(start_server)
-asyncio.get_event_loop().run_forever()
-print("Server is done")
+    print("Starting server!")
+    asyncio.get_event_loop().run_until_complete(start_server)
+    print("B")
+    asyncio.get_event_loop().run_until_complete(asyncio.wait([doTimeUpdates()]))
+    print("C")
+    asyncio.get_event_loop().run_forever()
+    print("Server is done")
 
-# thr = threading.Thread(target=DoDensityMapServer)
-# thr.start()
+thr = threading.Thread(target=DoDensityMapServer)
+thr.start()

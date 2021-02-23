@@ -72,6 +72,7 @@ namespace MinecraftProximity
 
             cancelTransmitCoords = new CancellationTokenSource();
             transmitCoordsTask = DoSendCoordinatesLoop(cancelTransmitCoords.Token);
+            Program.runningTasks.Enqueue((transmitCoordsTask, cancelTransmitCoords));
 
             //Program.nextTasks.Enqueue(async () =>
             //{

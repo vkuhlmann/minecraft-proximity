@@ -203,10 +203,10 @@ def DoDensityMapServer():
 
     print("Starting server!")
     asyncio.get_event_loop().run_until_complete(start_server)
-    print("B")
+    #print("B")
     asyncio.get_event_loop().run_until_complete(asyncio.wait([doTimeUpdates()]))
-    print("C")
-    asyncio.get_event_loop().run_forever()
+    #print("C")
+    #asyncio.get_event_loop().run_forever()
     print("Server is done")
 
 thr = threading.Thread(target=DoDensityMapServer)

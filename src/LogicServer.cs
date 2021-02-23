@@ -23,6 +23,8 @@ namespace MinecraftProximity
         public string playerName;
         public Coords? coords;
 
+        public dynamic pythonPlayer;
+
         public ServerPlayer(long userId, string playerName)
         {
             this.userId = userId;
@@ -84,10 +86,11 @@ namespace MinecraftProximity
                     }
 
                     dynamic mod = modules["logicserver"];
-                    dynamic inst = mod.LogicServer.Create();
+                    //dynamic inst = mod.LogicServer.Create();
+                    dynamic inst = mod.create_server();
                     logicServerPy = inst;
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     exception = ex;
                     Log.Error("Error initializing Python code for LogicServer: {Ex}", ex);
@@ -135,7 +138,7 @@ namespace MinecraftProximity
             {
                 using (Py.GIL())
                 {
-                    logicServerPy.Shutdown();
+                    logicServerPy.shutdown();
                 }
             }
             catch (Exception ex)
@@ -152,7 +155,7 @@ namespace MinecraftProximity
                 {
                     if (logicServerPy == null)
                         return false;
-                    return logicServerPy.HandleCommand(cmdName, args);
+                    return logicServerPy.handle_command(cmdName, args);
                 }
             }
             catch (Exception ex)
@@ -212,8 +215,18 @@ namespace MinecraftProximity
             Dictionary<long, ServerPlayer> newPlayers = new Dictionary<long, ServerPlayer>();
             foreach (Discord.User user in voiceLobby.GetMembers())
             {
-                ServerPlayer pl = new ServerPlayer(user.Id, user.Username);
-                newPlayers[user.Id] = pl;
+                if (playersMap.ContainsKey(user.Id))
+                {
+                    newPlayers[user.Id] = playersMap[user.Id];
+                }
+                else
+                {
+                    ServerPlayer pl = new ServerPlayer(user.Id, user.Username);
+                    using (Py.GIL())
+                        pl.pythonPlayer = GetUser(pl);
+
+                    newPlayers[user.Id] = pl;
+                }
             }
             playersMap = newPlayers;
         }
@@ -250,10 +263,11 @@ namespace MinecraftProximity
             dict["userId"] = new PyInt(pl.userId);
             dict["username"] = new PyString(pl.playerName);
 
-            using (Py.GIL())
-            {
-                return logicServerPy.PlayerFromDict(dict);
-            }
+            //using (Py.GIL())
+            //{
+            //return logicServerPy.PlayerFromDict(dict);
+            return logicServerPy.create_player(dict);
+            //}
         }
 
         public void SetUserVolumes(ServerPlayer target, IEnumerable<(long, float)> volumes)
@@ -309,6 +323,16 @@ namespace MinecraftProximity
 
                 using (Py.GIL())
                 {
+                    foreach (ServerPlayer pl in playersStore)
+                    {
+                        dynamic reprPl = pl.pythonPlayer;
+                        if (reprPl == null)
+                            continue;
+
+                        if (pl.coords.HasValue)
+                            reprPl.set_position(pl.coords.Value.x, pl.coords.Value.y, pl.coords.Value.z);
+                    }
+
                     //IEnumerable<ServerPlayer> players = playersMap.Values;
                     foreach (ServerPlayer pl in playersStore)
                     {
@@ -326,18 +350,24 @@ namespace MinecraftProximity
                         }
                         i += 1;
 
-                        dynamic reprPl = GetUser(pl);
+                        //dynamic reprPl = GetUser(pl);
+                        dynamic reprPl = pl.pythonPlayer;
+                        if (reprPl == null)
+                            continue;
 
                         //Dictionary<long, float> volumes = new Dictionary<long, float>();
                         foreach (ServerPlayer oth in playersStore)
                         {
                             if (pl == oth)
                                 continue;
-                            dynamic reprOth = GetUser(oth);
+                            //dynamic reprOth = GetUser(oth);
+                            dynamic reprOth = oth.pythonPlayer;
+                            if (reprOth == null)
+                                continue;
 
                             try
                             {
-                                li.Add((oth.userId, logicServerPy.GetVolume(reprPl, reprOth)));
+                                li.Add((oth.userId, logicServerPy.get_volume(reprPl, reprOth)));
                             }
                             catch (Exception ex)
                             {

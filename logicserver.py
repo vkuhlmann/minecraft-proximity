@@ -65,6 +65,27 @@ def generateObscurations(l, dens):
             ))
     #print(f"Obscurations are now\n{l}")
 
+def create_server():
+    return LogicServer()
+
+class Player:
+    def __init__(self, di, server):
+        self.pos = np.array([di["pos"]["x"], di["pos"]["y"], di["pos"]["z"]]) \
+                if di["pos"] is not None else None
+        self.userId = di["userId"]
+        self.username = di["username"]
+        self.server = server
+
+    def set_position(self, x, y, z):
+        self.pos = np.array([x, y, z])
+
+        #     return {
+        #     "pos": np.array([dict["pos"]["x"], dict["pos"]["y"], dict["pos"]["z"]]) \
+        #         if dict["pos"] is not None else None,
+        #     "userId": dict["userId"],
+        #     "username": dict["username"]
+        # }
+
 class LogicServer:
     def __init__(self):
         self.obscurations = [Obscuration(
@@ -76,16 +97,21 @@ class LogicServer:
         self.prevBase = None
 
         self.positions = {}
+
+    def create_player(self, di):
+        #return LogicServer.PlayerFromDict(di)
+        return Player(di, self)
         
-    def Shutdown(self):
+    def shutdown(self):
         print("Shutting down Python LogicServer")
         densitymap.isQuitRequested = True
-        densitymap.loop.call_soon_threadsafe(densitymap.loop.stop)
+        #densitymap.loop.call_soon_threadsafe(densitymap.loop.stop)
         densitymap.thr.join()
+        densitymap.loop.call_soon_threadsafe(densitymap.loop.stop)
         print("Shut down Python LogicServer")
 
 
-    def HandleCommand(self, cmdName, args):
+    def handle_command(self, cmdName, args):
         print(f"Received command {cmdName} with args {args}")
         if cmdName == "updatemap":
             print("Updating map...")
@@ -123,18 +149,18 @@ class LogicServer:
     def Create():
         return LogicServer()
 
-    @staticmethod
-    def PlayerFromDict(dict):
-        return {
-            "pos": np.array([dict["pos"]["x"], dict["pos"]["y"], dict["pos"]["z"]]) \
-                if dict["pos"] is not None else None,
-            "userId": dict["userId"],
-            "username": dict["username"]
-        }
+    # @staticmethod
+    # def PlayerFromDict(dict):
+    #     return {
+    #         "pos": np.array([dict["pos"]["x"], dict["pos"]["y"], dict["pos"]["z"]]) \
+    #             if dict["pos"] is not None else None,
+    #         "userId": dict["userId"],
+    #         "username": dict["username"]
+    #     }
 
-    def GetVolume(self, base, oth):
-        basePos = base["pos"]
-        othPos = oth["pos"]
+    def get_volume(self, base, oth):
+        basePos = base.pos
+        othPos = oth.pos
         #self.callId += 1
 
         # if base["username"] not in self.lastUpdatedTime or self.lastUpdatedTime[base["username"]] + 40 < self.callId:
@@ -148,11 +174,11 @@ class LogicServer:
         #     except Exception as ex:
         #         print(f"Error setting player position: {ex}")
 
-        if base["username"] not in self.positions:
-            self.positions[base["username"]] = np.array([0, 0, 0])
+        if base.username not in self.positions:
+            self.positions[base.username] = np.array([0, 0, 0])
 
         if basePos is not None:
-            self.positions[base["username"]] = basePos
+            self.positions[base.username] = basePos
 
         if basePos is None or othPos is None:
             return 1.0

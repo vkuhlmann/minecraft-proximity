@@ -44,11 +44,11 @@ namespace MinecraftProximity
             screen = -1;
             bounds = new Rectangle(0, 0, 1920, 1080);
 
-            calibrateTimeout = TimeSpan.FromSeconds(5);
+            calibrateTimeout = TimeSpan.FromSeconds(10);
             nextAllowedCalibrate = Environment.TickCount64;
 
             nextNotCalibratedWarning = Environment.TickCount64;
-            notCalibratedWarningTimeout = TimeSpan.FromSeconds(10);
+            notCalibratedWarningTimeout = TimeSpan.FromSeconds(15);
 
             stopwatch = new Stopwatch();
             measureDur = TimeSpan.FromSeconds(5);

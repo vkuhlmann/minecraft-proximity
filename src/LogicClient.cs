@@ -280,12 +280,22 @@ namespace MinecraftProximity
 
                 TimeSpan minDelay = TimeSpan.FromMilliseconds(1);
 
-                long statsStart = Environment.TickCount64;
-                TimeSpan statsInterval = TimeSpan.FromSeconds(20);
-                long nextStatsTickcount = Environment.TickCount64 + (long)statsInterval.TotalMilliseconds;
+                //long statsStart = Environment.TickCount64;
+                //TimeSpan statsInterval = TimeSpan.FromSeconds(20);
+                //long nextStatsTickcount = Environment.TickCount64 + (long)statsInterval.TotalMilliseconds;
                 int submissions = 0;
                 int successes = 0;
                 TaskCompletionSource<bool> completionSource = null;
+
+                RepeatProfiler profiler = new RepeatProfiler(TimeSpan.FromSeconds(20),
+                    (RepeatProfiler.Result res) =>
+                    {
+                        float successRate = successes / Math.Max(1.0f, submissions);
+
+                        Log.Information("[Client] Coordinate submission attempts: {Rate:F2} per second. Max: {maxDur} ms, avg {avgDur:F2} ms. Success: {SuccessPerc:F1}%", res.rate, res.maxDurMs, res.durMs, successRate * 100.0f);
+                        submissions = 0;
+                        successes = 0;
+                    });
 
                 ct.Register(() =>
                 {
@@ -305,6 +315,8 @@ namespace MinecraftProximity
                         //while (transmitsProcessing.Count > 0)
                         //	await Task.Delay(10, ct);
 
+                        profiler.Start();
+
                         Program.nextTasks.Enqueue(async () =>
                         {
                             completionSource.TrySetResult(await SendCoordinates());
@@ -317,19 +329,21 @@ namespace MinecraftProximity
                         if (success)
                             successes++;
 
-                        await Task.Delay(minDelay, ct);
-                        if (Environment.TickCount64 > nextStatsTickcount)
-                        {
-                            long timesp = Environment.TickCount64 - statsStart;
-                            float rate = submissions / ((float)timesp / 1000.0f);
-                            float successRate = successes / Math.Max(1.0f, submissions);
-                            Log.Information("[Client] Coordinate submission attempts: {Rate:F2} per second. Success: {SuccessPerc:F1}%", rate, successRate * 100.0f);
+                        profiler.Stop();
 
-                            statsStart = Environment.TickCount64;
-                            nextStatsTickcount = statsStart + (long)statsInterval.TotalMilliseconds;
-                            submissions = 0;
-                            successes = 0;
-                        }
+                        await Task.Delay(minDelay, ct);
+                        //if (Environment.TickCount64 > nextStatsTickcount)
+                        //{
+                        //    //long timesp = Environment.TickCount64 - statsStart;
+                        //    //float rate = submissions / ((float)timesp / 1000.0f);
+                        //    //float successRate = successes / Math.Max(1.0f, submissions);
+                        //    Log.Information("[Client] Coordinate submission attempts: {Rate:F2} per second. Max: {} ms, avg {} ms. Success: {SuccessPerc:F1}%", rate,  successRate * 100.0f);
+
+                        //    statsStart = Environment.TickCount64;
+                        //    nextStatsTickcount = statsStart + (long)statsInterval.TotalMilliseconds;
+                        //    submissions = 0;
+                        //    successes = 0;
+                        //}
 
                         sendIntervalTicks = (long)sendCoordsInterval.TotalMilliseconds;
 

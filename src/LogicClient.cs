@@ -203,7 +203,8 @@ namespace MinecraftProximity
             }
             else if (action == "sendCoords")
             {
-                await SendCoordinates();
+                Coords? coords = await coordsReader.GetCoords();
+                await SendCoordinates(coords);
             }
             //else if (action == "printMessage")
             //{
@@ -252,9 +253,9 @@ namespace MinecraftProximity
             }
         }
 
-        public async Task<bool> SendCoordinates()
+        public async Task<bool> SendCoordinates(Coords? coords)
         {
-            Coords? coords = await coordsReader.GetCoords();
+            //Coords? coords = await coordsReader.GetCoords();
             if (!coords.HasValue || serverUser == -1)
                 return false;
             this.coords = coords.Value;
@@ -321,9 +322,11 @@ namespace MinecraftProximity
 
                         profiler.Start();
 
+                        Coords? coords = await coordsReader.GetCoords();
+
                         Program.nextTasks.Enqueue(async () =>
                         {
-                            completionSource.TrySetResult(await SendCoordinates());
+                            completionSource.TrySetResult(await SendCoordinates(coords));
                         });
                         bool success = await completionSource.Task;
 

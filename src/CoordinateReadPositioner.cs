@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Drawing;
+using System.Drawing.Imaging;
 
 namespace MinecraftProximity
 {
@@ -24,6 +25,19 @@ namespace MinecraftProximity
 
         public static IEnumerable<Positioning> FindPossiblePositions(Bitmap bitmap, Rectangle bounds)
         {
+            BitmapData pixels = bitmap.LockBits(
+                new Rectangle(0, 0, bitmap.Width, bitmap.Height),
+                ImageLockMode.ReadOnly,
+                PixelFormat.Format32bppArgb);
+
+            // Source: https://docs.microsoft.com/en-us/dotnet/api/system.drawing.bitmap.lockbits?view=dotnet-plat-ext-5.0
+            int bytes = Math.Abs(pixels.Stride) * bitmap.Height;
+            byte[] rgbaValues = new byte[bytes];
+
+            System.Runtime.InteropServices.Marshal.Copy(pixels.Scan0, rgbaValues, 0, bytes);
+
+            bitmap.UnlockBits(pixels);
+
             HashSet<Positioning> exploredPositions = new HashSet<Positioning>();
 
             foreach (Color c in new Color[] { GRAY_COLOR, ORANGE_COLOR })
@@ -31,7 +45,7 @@ namespace MinecraftProximity
                 int scale = 4;
                 for (int mod = 0; mod < scale; mod++)
                 {
-                    IEnumerable<Positioning> m = FindZ(bitmap, bounds, c, scale, mod);
+                    IEnumerable<Positioning> m = FindZ(rgbaValues, pixels.Width, bounds, c, scale, mod);
                     foreach (Positioning ans in m)
                     {
                         Positioning cp = ans;
@@ -50,64 +64,82 @@ namespace MinecraftProximity
                     }
                 }
             }
+
+
         }
 
-        static int ExpandToLeft(Bitmap b, int x, int y, int height, Color c, int minX = 0)
+        static int ExpandToLeft(byte[] bitmapData, int bitmapWidth, int x, int y, int height, Color color, int minX = 0)
         {
             for (int u = x - 1; u >= minX; u--)
                 for (int v = y; v < y + height; v++)
-                    if (b.GetPixel(u, v) != c)
+                {
+                    int pos = (y * bitmapWidth + x) * 4;
+                    if (bitmapData[pos + 1] != color.R || bitmapData[pos + 2] != color.G || bitmapData[pos + 3] != color.B)
+                        //b.GetPixel(u, v) != c)
                         return u + 1;
+                }
             return minX;
         }
 
-        static int ExpandToRight(Bitmap b, int x, int y, int height, Color color, int maxXExcl)
+        static int ExpandToRight(byte[] bitmapData, int bitmapWidth, int x, int y, int height, Color color, int maxXExcl)
         {
             for (int u = x + 1; u < maxXExcl; u++)
                 for (int v = y; v < y + height; v++)
-                    if (b.GetPixel(u, v) != color)
+                {
+                    int pos = (y * bitmapWidth + x) * 4;
+                    if (bitmapData[pos + 1] != color.R || bitmapData[pos + 2] != color.G || bitmapData[pos + 3] != color.B)
                         return u;
+                }
             return maxXExcl;
         }
 
-        static int ExpandToTop(Bitmap b, int x, int y, int width, Color color, int minY = 0)
+        static int ExpandToTop(byte[] bitmapData, int bitmapWidth, int x, int y, int width, Color color, int minY = 0)
         {
             for (int v = y - 1; v >= minY; v--)
                 for (int u = x; u < x + width; u++)
-                    if (b.GetPixel(u, v) != color)
+                {
+                    int pos = (y * bitmapWidth + x) * 4;
+                    if (bitmapData[pos + 1] != color.R || bitmapData[pos + 2] != color.G || bitmapData[pos + 3] != color.B)
                         return v + 1;
+                }
             return minY;
         }
 
-        static int ExpandToBottom(Bitmap b, int x, int y, int width, Color color, int maxYExcl)
+        static int ExpandToBottom(byte[] bitmapData, int bitmapWidth, int x, int y, int width, Color color, int maxYExcl)
         {
             for (int v = y + 1; v < maxYExcl; v++)
                 for (int u = x; u < x + width; u++)
-                    if (b.GetPixel(u, v) != color)
+                {
+                    int pos = (y * bitmapWidth + x) * 4;
+                    if (bitmapData[pos + 1] != color.R || bitmapData[pos + 2] != color.G || bitmapData[pos + 3] != color.B)
                         return v;
+                }
             return maxYExcl;
         }
 
-        static Rectangle ExpandToPlainColor(Bitmap b, int x, int y)
+        static Rectangle ExpandToPlainColor(byte[] bitmapData, int bitmapWidth, int x, int y)
         {
             int width = 1;
             int height = 1;
-            Color color = b.GetPixel(x, y);
+            //Color color = b.GetPixel(x, y);
 
-            int farLeft = ExpandToLeft(b, x, y, height, color);
-            int farRight = ExpandToRight(b, x, y, height, color, b.Width);
+            int pos = (y * bitmapWidth + x) * 4;
+            Color color = Color.FromArgb(bitmapData[pos + 1], bitmapData[pos + 2], bitmapData[pos + 3]);
+
+            int farLeft = ExpandToLeft(bitmapData, bitmapWidth, x, y, height, color);
+            int farRight = ExpandToRight(bitmapData, bitmapWidth, x, y, height, color, bitmapWidth);
             x = farLeft;
             width = farRight - farLeft;
 
-            int farTop = ExpandToTop(b, x, y, width, color);
-            int farBottom = ExpandToBottom(b, x, y, width, color, b.Height);
+            int farTop = ExpandToTop(bitmapData, bitmapWidth, x, y, width, color);
+            int farBottom = ExpandToBottom(bitmapData, bitmapWidth, x, y, width, color, bitmapData.Length / (4 * bitmapWidth));
             y = farTop;
             height = farBottom - farTop;
 
             return new Rectangle(x, y, width, height);
         }
 
-        static List<Rectangle> FindHorizLines(Bitmap bitmap, Rectangle bounds, Color color, int scale, int mod)
+        static List<Rectangle> FindHorizLines(byte[] bitmapData, int bitmapWidth, Rectangle bounds, Color color, int scale, int mod)
         {
             List<Rectangle> rects = new List<Rectangle>();
             HashSet<Rectangle> rectsHash = new HashSet<Rectangle>();
@@ -116,9 +148,11 @@ namespace MinecraftProximity
             {
                 for (int x = bounds.X + mod; x < bounds.Right; x += scale)
                 {
-                    if (bitmap.GetPixel(x, y) == color)
+                    int pos = (y * bitmapWidth + x) * 4;
+                    if (bitmapData[pos + 1] == color.R && bitmapData[pos + 2] == color.G && bitmapData[pos + 3] == color.B)
+                        //bitmap.GetPixel(x, y) == color)
                     {
-                        Rectangle rect = ExpandToPlainColor(bitmap, x, y);
+                        Rectangle rect = ExpandToPlainColor(bitmapData, bitmapWidth, x, y);
                         float ratio = (float)rect.Width / rect.Height;
                         if (ratio >= 4 && ratio <= 6)
                         {
@@ -135,9 +169,9 @@ namespace MinecraftProximity
             return rects;
         }
 
-        static IEnumerable<Positioning> FindZ(Bitmap bitmap, Rectangle bounds, Color color, int sc, int mod)
+        static IEnumerable<Positioning> FindZ(byte[] bitmapData, int bitmapWidth, Rectangle bounds, Color color, int sc, int mod)
         {
-            List<Rectangle> horizLines = FindHorizLines(bitmap, bounds, color, sc, mod);
+            List<Rectangle> horizLines = FindHorizLines(bitmapData, bitmapWidth, bounds, color, sc, mod);
 
             for (int i = 0; i < horizLines.Count; i++)
             {

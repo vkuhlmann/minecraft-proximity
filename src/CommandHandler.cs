@@ -50,7 +50,7 @@ namespace MinecraftProximity
             { "broadcast", DoBroadcastCommand },
             { "screen", DoScreenCommand },
             { "overlay", DoOverlayCommand },
-            { "webUI", DoWebUICommand }
+            { "webui", DoWebUICommand }
         };
 
         public static Dictionary<string, string> commandAliases = new Dictionary<string, string>

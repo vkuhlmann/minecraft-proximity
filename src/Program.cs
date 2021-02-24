@@ -288,7 +288,7 @@ namespace MinecraftProximity
                         {
                             if (++errorBunchCount <= errorBunchMax)
                             {
-                                Log.Warning("Task ended with error: {Msg}", ex.Message);
+                                Log.Warning("Task ended with error: {Msg}\n{StackTrace}", ex.Message, ex.StackTrace);
                             }
                             else if (errorBunchCount == errorBunchMax + 1)
                             {

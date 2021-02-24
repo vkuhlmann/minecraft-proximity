@@ -58,6 +58,8 @@ namespace MinecraftProximity
 
         static async Task RunAsync(string[] args)
         {
+            Console.Title = "Proximity chat for Minecraft";
+
             runningTasks = new ConcurrentQueue<(Task, CancellationTokenSource)>();
             configFile = new ConfigFile("config.json");
 

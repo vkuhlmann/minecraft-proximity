@@ -267,6 +267,12 @@ def handle_command(cmdName, args):
         return True
     return False
 
+def set_players(data):
+    arr = json.loads(data)
+    for pl in arr:
+        densityMap.setPlayerPosition(pl["name"], pl["x"], pl["z"])
+
+
 def HandleXZCommand(args):
     m = re.fullmatch(r"((?P<x>(\+|-|)\d+) (?P<z>(\+|-|)\d+))?", args)
     if m is None:

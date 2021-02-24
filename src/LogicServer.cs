@@ -30,6 +30,7 @@ namespace MinecraftProximity
             this.userId = userId;
             this.playerName = playerName;
             coords = null;
+            pythonPlayer = null;
         }
     }
 
@@ -464,12 +465,12 @@ namespace MinecraftProximity
                 });
 
                 int executed = 0;
+                int frame = 0;
 
                 try
                 {
                     while (true)
                     {
-
                         completionSource = new TaskCompletionSource<bool>();
                         ct.ThrowIfCancellationRequested();
 
@@ -488,12 +489,45 @@ namespace MinecraftProximity
                             //stats.Start();
                             foreach ((long userId, List<(long, float)> li) in ans)
                                 SetUserVolumes(playersMap[userId], li);
+
+                            frame++;
+                            if (frame % 5 == 1)
+                            {
+                                JArray playersData = new JArray();
+                                //foreach ((long userId, float volume) in Program.server)
+                                foreach (ServerPlayer pl in playersMap.Values)
+                                {
+                                    playersData.Add(JObject.FromObject(new
+                                    {
+                                        name = pl.playerName,
+                                        x = pl.coords?.x ?? 0.0f,
+                                        y = pl.coords?.y ?? 0.0f,
+                                        z = pl.coords?.z ?? 0.0f
+                                    }));
+                                }
+
+                                JObject message = JObject.FromObject(new
+                                {
+                                    action = "updateplayers",
+                                    data = playersData
+                                });
+
+                                foreach (ServerPlayer pl in playersMap.Values)
+                                {
+                                    voiceLobby.SendNetworkJson(pl.userId, 0, message);
+                                }
+                                //Log.Information("Sent player position update");
+                            }
+
+                            executed++;
                             completionSource.TrySetResult(true);
                             //stats.Stop();
-                            executed++;
+
+                            //transmitsProcessing.Enqueue(true);
+                            //Program.nextTasks.Enqueue(async () =>
+                            //{
                             await Task.CompletedTask;
                         });
-
 
                         await completionSource.Task;
 

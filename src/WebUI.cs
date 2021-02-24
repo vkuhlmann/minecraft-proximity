@@ -104,6 +104,16 @@ namespace MinecraftProximity
             }
         }
 
+        public void UpdatePlayers(string data)
+        {
+            using (Py.GIL())
+            {
+                if (module == null)
+                    return;
+                module.set_players(data);
+            }
+        }
+
         //public void HandleXZCommand(string args)
         //{
         //    if (module == null)

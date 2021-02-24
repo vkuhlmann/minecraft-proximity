@@ -247,6 +247,10 @@ namespace MinecraftProximity
             {
                 Program.webUI?.ReceiveUpdate(data["data"].ToString());
             }
+            else if (action == "updateplayers")
+            {
+                Program.webUI?.UpdatePlayers(data["data"].ToString());
+            }
             else
             {
                 Log.Warning("[Client] Unknown action \"{Action}\"", action);

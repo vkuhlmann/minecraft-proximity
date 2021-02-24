@@ -1,6 +1,6 @@
 % minecraft-proximity terms
-% MAJOR-VERSION: 2021-02-22T10:36Z
-% MINOR-VERSION: 2021-02-22T10:36Z
+% MAJOR-VERSION: 2021-02-24T18:04Z
+% MINOR-VERSION: 2021-02-24T18:04Z
 
 All of the following licenses apply to this software. Usage and modification
 requires consent with these.
@@ -43,9 +43,9 @@ the Software, since it implies an altering of the Software.
 The privacy policy provided is valid for any derivative of the Software which
 is not a Modified version.
 
-For a Modified version, the provided privacy policy is void. Furthermore, you
-should change the client ID by your own before use. This involves registering a
-new application through Discord:
+For a Modified version, the provided privacy policy is void. Furthermore, make
+sure you adhere to the Discord Developer Terms of Service. If your application
+deviates a lot from the Software, consider registering it as its own App:
 https://discord.com/developers/applications
 
 I hereby grant you an MIT license to copy the privacy policy, with the

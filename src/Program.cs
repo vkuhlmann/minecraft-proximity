@@ -74,7 +74,7 @@ namespace MinecraftProximity
             server = null;
             webUI = null;
 
-            var clientID = "804643036755001365";
+            var clientID = "814073574499287102";
 
             if (configFile.Json["multiDiscord"]?.Value<bool>() == true)
             {

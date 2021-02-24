@@ -50,6 +50,10 @@ class ColorMapperEntry {
     };
 
     setCoefficient(coefficient) {
+        coefficient = parseFloat(coefficient)
+        if (isNaN(coefficient))
+            return;
+
         this.coefficient = coefficient;
         //$("[data-binding=centerpoint]", obj.el)[0].style.fill = obj.color;
         updateBinding(this, "coefficient");

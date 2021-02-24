@@ -6,6 +6,7 @@ import websockets
 import threading
 import numpy as np
 import queue
+import re
 
 logging.basicConfig()
 
@@ -25,7 +26,7 @@ def sendCoords(name, x, z):
             ]
         })
     )
-    print(f"ScheduledMessage has now size {scheduledMessages.qsize()}")
+    #print(f"ScheduledMessage has now size {scheduledMessages.qsize()}")
 
     # if USERS:
     #     message = json.dumps({
@@ -182,7 +183,7 @@ async def doTimeUpdates():
             await asyncio.sleep(0.2)
             if scheduledMessages.qsize() > 0:
                 it = scheduledMessages.get()
-                print(f"Sending message to {len(USERS)} users:\n{it}")
+                #print(f"Sending message to {len(USERS)} users:\n{it}")
                 if USERS:
                     message = it
                     await asyncio.wait([user.send(message) for user in USERS])
@@ -195,9 +196,13 @@ async def doTimeUpdates():
 loop = asyncio.new_event_loop()
 
 async def DoUpdateMap(obj):
+    global currentState
+
     obj["x"] = densityMap.x
     obj["z"] = densityMap.z
     densityMap.setDensities(obj)
+
+    currentState = obj
 
     if onupdated_callback != None:
         onupdated_callback(json.dumps(obj))
@@ -213,6 +218,7 @@ def DoDensityMapServer():
 
 thr = None
 onupdated_callback = None
+currentState = None
 
 def start_webui(onupdated_callback_p):
     global thr, onupdated_callback
@@ -232,6 +238,8 @@ def stop_webui():
     print("Shut down webui")
 
 def put_data(data):
+    global currentState
+
     data = json.loads(data)
     densityMap.x = data["x"]
     densityMap.z = data["z"]
@@ -242,4 +250,50 @@ def put_data(data):
             "data": data
         })
     )
+    currentState = data
+
+def handle_command(cmdName, args):
+    #print(f"Received command {cmdName} with args '{args}'")
+    # if cmdName == "updatemap":
+    #     print("Updating map...")
+    #     for username, pos in self.positions.items():
+    #         densitymap.densityMap.setPlayerPosition(username, pos[0], pos[2])
+    #         print(f"Submitted player {username} (x={pos[0]}, z={pos[2]})")
+
+    #     print("Updated map")
+    #     return True
+    if cmdName == "xz":
+        HandleXZCommand(args)
+        return True
+    return False
+
+def HandleXZCommand(args):
+    m = re.fullmatch(r"((?P<x>(\+|-|)\d+) (?P<z>(\+|-|)\d+))?", args)
+    if m is None:
+        print("Invalid syntax. Syntax is")
+        print("xz [<x> <z>]")
+        return
+    if m.group("x") is None:
+        print(f"topleft is {densityMap.x}, {densityMap.z}")
+        return
+    x = int(m.group("x"))
+    z = int(m.group("z"))
+    prevX = densityMap.x
+    prevZ = densityMap.z
+
+    densityMap.x = x
+    densityMap.z = z
+
+    if currentState != None:
+        currentState["x"] = x
+        currentState["z"] = z
+
+        put_data(json.dumps(currentState))
+
+        if onupdated_callback != None:
+            onupdated_callback(json.dumps(currentState))
+
+    print(f"topleft is now {densityMap.x}, {densityMap.z} (was {prevX}, {prevZ})")
+
+
 

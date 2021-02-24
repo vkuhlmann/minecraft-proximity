@@ -7,6 +7,7 @@ using Serilog;
 using Python.Runtime;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Text.RegularExpressions;
 
 namespace MinecraftProximity
 {
@@ -50,6 +51,7 @@ namespace MinecraftProximity
 
         public void Stop()
         {
+            Log.Information("[WebUI] Signaling shut down.");
             using (Py.GIL())
             {
                 if (module == null)
@@ -83,5 +85,45 @@ namespace MinecraftProximity
             //transmitsProcessing.Enqueue(true);
             Program.client.voiceLobby.SendNetworkJson(Program.client.serverUser, 3, message);
         }
+
+        public bool PythonHandleCommand(string subcommand, string args)
+        {
+            try
+            {
+                using (Py.GIL())
+                {
+                    if (module == null)
+                        return false;
+                    return module.handle_command(subcommand, args);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Python raised an error trying to do HandleCommand: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+                return false;
+            }
+        }
+
+        //public void HandleXZCommand(string args)
+        //{
+        //    if (module == null)
+        //    {
+        //        Console.WriteLine("Module is null! Try reinstantiating the webui.");
+        //        return;
+        //    }
+
+        //    Match m = Regex.Match(args, "^((?<x>(\\+|-|)\\d+) (?<z>(\\+|-|)\\d+))?$");
+        //    if (!m.Success)
+        //    {
+        //        Console.WriteLine("Invalid command syntax!");
+        //        Console.WriteLine("Syntax is \x1b[91mwebui xz [<newX> <newZ>]\x1b[0m");
+        //    }
+
+        //    if (!m.Groups["x"].Success)
+        //    {
+        //        Console.WriteLine();
+        //    }
+
+        //}
     }
 }

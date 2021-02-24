@@ -12,6 +12,7 @@ using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Python.Runtime;
 
 namespace MinecraftProximity
 {
@@ -53,7 +54,7 @@ namespace MinecraftProximity
 
             client?.Stop();
             client = new LogicClient(currentLobby);
-            //DoHost();
+            DoHost();
         }
 
         static async Task RunAsync(string[] args)
@@ -345,6 +346,9 @@ namespace MinecraftProximity
                     execLoop.Wait();
                 }
                 catch (Exception) { }
+
+                using (Py.GIL())
+                    PythonManager.screeninfo = null;
             }
             catch (Exception ex)
             {

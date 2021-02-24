@@ -110,7 +110,7 @@ class LogicServer:
             for u in range(len(data["pixelart"][v])):
                 x = u + data["x"]
                 y = v + data["z"]
-                coeff = data["toCoefficient"][data["pixelart"][v][u]] #data.pixelart[v][u]
+                coeff = data["toCoefficient"][str(data["pixelart"][v][u])] #data.pixelart[v][u]
                 if coeff >= 0.95:
                     continue
 
@@ -119,7 +119,8 @@ class LogicServer:
                     np.array([x + 1, 255, y + 1]),
                     transmissionCoeff=coeff
                 ))
-        print(f"Obscurations is {self.obscurations}")
+        #print(f"Obscurations is {self.obscurations}")
+        print(f"Updated obscurations")
 
     def create_player(self, di):
         #return LogicServer.PlayerFromDict(di)

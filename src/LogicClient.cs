@@ -272,6 +272,8 @@ namespace MinecraftProximity
             //transmitsProcessing.Enqueue(true);
             voiceLobby.SendNetworkJson(serverUser, 3, message);
             //transmitsProcessing.TryDequeue(out bool a);
+
+            await Task.CompletedTask;
             return true;
         }
 

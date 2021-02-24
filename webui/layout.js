@@ -45,7 +45,11 @@ let resizeButton;
 let resizeController;
 let socket = null;
 
+let clientId = 0;
+
 function onDOMReady() {
+    clientId = Math.floor(Math.random() * 1e9);
+
     mapper = new Mapper($("#mapper")[0]);
     //mapper.setToColorMapping(colormap);
     mapper.toColor = colormap;
@@ -370,6 +374,9 @@ function handleMessage(json) {
 
         case "imageput": 
             {
+                if (json.data.sender != null && json.data.sender != 0
+                    && json.data.sender == clientId)
+                    return;
                 imagePut(json.data);
             }
             break;
@@ -434,6 +441,7 @@ async function sendNewData() {
 
     if (socket != null) {
         let data = imageGet();
+        data.sender = clientId;
         await socket.send(JSON.stringify({ "action": "updatemap", "data": data }));
 
     } else {

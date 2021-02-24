@@ -13,7 +13,7 @@ namespace MinecraftProximity
 {
     class Legal
     {
-        public const string TERMS_VERSION = "2021-02-22T10:36Z";
+        public const string TERMS_VERSION = "2021-02-24T18:04Z";
         public const string PRIVACYPOLICY_VERSION = "2021-02-22T09:57Z";
 
         enum LegalFileType

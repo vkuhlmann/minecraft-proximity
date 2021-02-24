@@ -67,7 +67,7 @@ namespace MinecraftProximity
 
             // Create a lobby.
             var transaction = lobbyManager.GetLobbyCreateTransaction();
-            transaction.SetCapacity(6);
+            transaction.SetCapacity(10);
             transaction.SetType(Discord.LobbyType.Private);
             transaction.SetMetadata("version", "1");
 
@@ -445,12 +445,11 @@ namespace MinecraftProximity
 
             var activity = new Discord.Activity
             {
-                State = "Testing",
-                Details = "Mysterious development",
+                State = "#DevelopmentSquad",
+                Details = "Come join the project! github.com/vkuhlmann/minecraft-proximity",
                 Timestamps =
                     {
-                        Start = 5,
-                        End = 6,
+                        Start = DateTimeOffset.Now.ToUnixTimeSeconds()
                     },
                 //Assets =
                 //	{

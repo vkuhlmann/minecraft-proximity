@@ -405,9 +405,12 @@ namespace MinecraftProximity
                 TaskCompletionSource<bool> cs = new TaskCompletionSource<bool>();
                 nextTasks.Enqueue(async () =>
                 {
-                    Task<Coords?> t = client?.coordsReader?.GetCoords();
+                    //Task<Coords?> t = client?.coordsReader?.GetCoords();
 
-                    Log.Information("[CoordinateReader] Coords are {PrintedCoords}.", (t != null ? await t : null)?.ToString() ?? "null");
+                    //Log.Information("[CoordinateReader] Coords are {PrintedCoords}.", (t != null ? await t : null)?.ToString() ?? "null");
+                    Coords? a = client?.coords;
+                    Log.Information("[CoordinateReader] Coords are {PrintedCoords}.", a?.ToString() ?? "null");
+
                     cs.TrySetResult(true);
                 });
                 await cs.Task;

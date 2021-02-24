@@ -23,6 +23,13 @@ namespace MinecraftProximity
             task.Wait();
             Log.Information("[WebUI] Initializing...");
 
+            string libPath = PythonManager.libPath;
+            if (libPath == null)
+            {
+                //Log.Information("[WebUI] LibPath is null. Cancelling start.");
+                throw new Exception("LibPath is null! Can't start WebUI.");
+            }
+
             updateDelegate = (string data) =>
             {
                 SendUpdate(data);
@@ -42,7 +49,7 @@ namespace MinecraftProximity
 
                 module = modules["webui"];
 
-                module.start_webui(updateDelegate);
+                module.start_webui(libPath, updateDelegate);
                 //dynamic inst = coordinateReader.CoordinateReader.Create();
                 //coordReaderPy = inst;
             }

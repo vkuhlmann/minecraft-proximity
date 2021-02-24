@@ -14,6 +14,7 @@ namespace MinecraftProximity
     {
         public static Task pythonSetupTask;
         public static dynamic screeninfo;
+        public static string libPath;
 
         public static async Task<Rectangle[]> GetScreenRects()
         {
@@ -52,7 +53,7 @@ namespace MinecraftProximity
                 dir = dir.Parent;
             }
 
-            string libPath;
+            //string libPath;
             if (dir != null)
                 libPath = dir.FullName;
             else

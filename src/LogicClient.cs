@@ -39,7 +39,7 @@ namespace MinecraftProximity
 
         public ICoordinateReader coordsReader { get; protected set; }
 
-        Coords coords;
+        public Coords coords { get; protected set; }
         public long serverUser { get; protected set; }
         long ownUserId;
         public TimeSpan sendCoordsInterval { get; set; }

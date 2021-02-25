@@ -13,6 +13,8 @@ namespace MinecraftProximity
     class PythonManager
     {
         public static Task pythonSetupTask;
+        public static dynamic screeninfo;
+        public static string libPath;
 
         public static async Task<Rectangle[]> GetScreenRects()
         {
@@ -20,7 +22,7 @@ namespace MinecraftProximity
             using (Py.GIL())
             {
                 //PyScope scope = Py.CreateScope();
-                dynamic screeninfo = Py.Import("screeninfo");
+                //dynamic screeninfo = scope.Import("screeninfo");
 
                 PyList monitors = PyList.AsList(screeninfo.get_monitors());
                 Rectangle[] rects = new Rectangle[monitors.Length()];
@@ -46,12 +48,12 @@ namespace MinecraftProximity
             DirectoryInfo dir = assemblyDir;
             while (dir != null)
             {
-                if (File.Exists(Path.Combine(dir.FullName, "coordinatereader.py")))
+                if (File.Exists(Path.Combine(dir.FullName, "logicserver.py")))
                     break;
                 dir = dir.Parent;
             }
 
-            string libPath;
+            //string libPath;
             if (dir != null)
                 libPath = dir.FullName;
             else
@@ -79,8 +81,9 @@ namespace MinecraftProximity
 
             Installer.PipInstallModule("websockets");
 
-
             PythonEngine.Initialize();
+
+            screeninfo = Py.Import("screeninfo");
 
             using (Py.GIL())
             {

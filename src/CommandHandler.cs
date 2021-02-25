@@ -136,6 +136,7 @@ namespace MinecraftProximity
                 }
 
                 Program.client.coordsReader.SetScreen(int.Parse(argument));
+                await Task.CompletedTask;
             });
             await Task.CompletedTask;
         }
@@ -159,10 +160,26 @@ namespace MinecraftProximity
 
         static async Task DoWebUICommand(string argument)
         {
+            Match m = Regex.Match(argument, "^(?<subcommand>[a-zA-Z0-9]+)( (?<args>.*))?$");
+            if (!m.Success)
+            {
+                Console.WriteLine("Invalid command syntax!");
+                Console.WriteLine("Syntax is \x1b[91mwebui <subcommand> [args ...]\x1b[0m");
+            }
+
+            string subcommand = m.Groups["subcommand"].Value;
+            string args = m.Groups["args"].Value;
+
             Program.nextTasks.Enqueue(async () =>
             {
-                if (argument == "start")
+                if (subcommand == "start")
                 {
+                    if (args != "")
+                    {
+                        Console.WriteLine("Subcommand start does not take any arguments. Cancelling.");
+                        return;
+                    }
+
                     if (Program.webUI != null)
                     {
                         Console.WriteLine("WebUI already exists!");
@@ -171,9 +188,22 @@ namespace MinecraftProximity
                     Program.webUI = new WebUI();
                     Program.webUI.Start();
                 }
-                else if (argument == "stop")
+                else if (subcommand == "stop")
                 {
+                    if (args != "")
+                    {
+                        Console.WriteLine("Subcommand stop does not take any arguments. Cancelling.");
+                        return;
+                    }
                     Program.webUI?.Stop();
+                    Program.webUI = null;
+                }
+                else if (Program.webUI != null && Program.webUI.PythonHandleCommand(subcommand, args))
+                {
+                    //else if (subcommand == "xz")
+                    //{
+                    ///Program.webUI?.HandleXZCommand(args);
+                    //}
                 }
                 else
                 {
@@ -199,7 +229,7 @@ namespace MinecraftProximity
             if (commandAliases.TryGetValue(cmdName, out string actualCmd))
                 cmdName = actualCmd;
 
-            if (commands.TryGetValue(m.Groups["cmdName"].Value, out Func<string, Task> value))
+            if (commands.TryGetValue(cmdName, out Func<string, Task> value))
             {
                 await value(m.Groups["args"].Value);
             }

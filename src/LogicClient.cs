@@ -39,7 +39,7 @@ namespace MinecraftProximity
 
         public ICoordinateReader coordsReader { get; protected set; }
 
-        Coords coords;
+        public Coords coords { get; protected set; }
         public long serverUser { get; protected set; }
         long ownUserId;
         public TimeSpan sendCoordsInterval { get; set; }
@@ -247,6 +247,10 @@ namespace MinecraftProximity
             {
                 Program.webUI?.ReceiveUpdate(data["data"].ToString());
             }
+            else if (action == "updateplayers")
+            {
+                Program.webUI?.UpdatePlayers(data["data"].ToString());
+            }
             else
             {
                 Log.Warning("[Client] Unknown action \"{Action}\"", action);
@@ -272,6 +276,8 @@ namespace MinecraftProximity
             //transmitsProcessing.Enqueue(true);
             voiceLobby.SendNetworkJson(serverUser, 3, message);
             //transmitsProcessing.TryDequeue(out bool a);
+
+            await Task.CompletedTask;
             return true;
         }
 

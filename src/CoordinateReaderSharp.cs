@@ -57,7 +57,7 @@ namespace MinecraftProximity
             measureEnd = measureStart + (long)measureDur.TotalMilliseconds;
             requests = 0;
 
-            coordsExtractRegex = new Regex("^\\s*(Z:)?\\s*(?<x>[+-]?\\d+(\\.\\d+)?)(\\s|\\s*/)\\s*" +
+            coordsExtractRegex = new Regex("^\\s*(Z:)?\\s*(?<x>[+-]?\\d+(?<xFrac>\\.\\d+)?)(\\s|\\s*/)\\s*" +
             "(?<y>[+-]?\\d+(\\.\\d+)?)(\\s|\\s*/)\\s*" +
             "(?<z>[+-]?\\d+(\\.\\d+)?).*$");
         }
@@ -236,11 +236,15 @@ namespace MinecraftProximity
                 positioning = null;
                 return null;
             }
+            float offset = 0.0f;
+            if (!m.Groups["xFrac"].Success)
+                offset = 0.5f;
+
             return new Coords
             {
-                x = float.Parse(m.Groups["x"].Value),
-                y = float.Parse(m.Groups["y"].Value),
-                z = float.Parse(m.Groups["z"].Value)
+                x = float.Parse(m.Groups["x"].Value) + offset,
+                y = float.Parse(m.Groups["y"].Value) + offset,
+                z = float.Parse(m.Groups["z"].Value) + offset
             };
         }
 

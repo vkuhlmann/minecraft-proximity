@@ -45,7 +45,11 @@ let resizeButton;
 let resizeController;
 let socket = null;
 
+let clientId = 0;
+
 function onDOMReady() {
+    clientId = Math.floor(Math.random() * 1e9);
+
     mapper = new Mapper($("#mapper")[0]);
     //mapper.setToColorMapping(colormap);
     mapper.toColor = colormap;
@@ -341,9 +345,11 @@ const parseRGBARegex = new RegExp(
 
 function tryOpenSocket() {
     //debugger;
+    $("#statusBrand")[0].innerHTML = `<span style="color:gray;">Trying to connect...</span>`;
     socket = new WebSocket("ws://127.0.0.1:6789");
     socket.onopen = e => {
         console.log("[open] Connection established");
+        $("#statusBrand")[0].innerHTML = `<span style="color:green;">Connected</span>`;
     };
 
     socket.onmessage = e => {
@@ -352,10 +358,12 @@ function tryOpenSocket() {
 
     socket.onerror = (e) => {
         console.log(`[error] Socket error`);
+        $("#statusBrand")[0].innerHTML = `<span style="color:red;" onclick="tryOpenSocket">Disconnected</span>`;
     }
 
     socket.onclose = (e) => {
         console.log(`[close] Socket closed with code ${e.code}, reason: ${e.reason}`);
+        $("#statusBrand")[0].innerHTML = `<span style="color:red;" onclick="tryOpenSocket">Disconnected</span>`;
         socket = null;
     }
 }
@@ -370,6 +378,9 @@ function handleMessage(json) {
 
         case "imageput": 
             {
+                if (json.data.sender != null && json.data.sender != 0
+                    && json.data.sender == clientId)
+                    return;
                 imagePut(json.data);
             }
             break;
@@ -434,6 +445,7 @@ async function sendNewData() {
 
     if (socket != null) {
         let data = imageGet();
+        data.sender = clientId;
         await socket.send(JSON.stringify({ "action": "updatemap", "data": data }));
 
     } else {

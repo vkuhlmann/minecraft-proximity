@@ -12,6 +12,7 @@ using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Python.Runtime;
 
 namespace MinecraftProximity
 {
@@ -53,7 +54,7 @@ namespace MinecraftProximity
 
             client?.Stop();
             client = new LogicClient(currentLobby);
-            //DoHost();
+            DoHost();
         }
 
         static async Task RunAsync(string[] args)
@@ -329,6 +330,7 @@ namespace MinecraftProximity
                         await Task.Delay(1000 / 100);
                 }
 
+                webUI?.Stop();
                 server?.Stop();
                 client?.Stop();
 
@@ -345,6 +347,9 @@ namespace MinecraftProximity
                     execLoop.Wait();
                 }
                 catch (Exception) { }
+
+                using (Py.GIL())
+                    PythonManager.screeninfo = null;
             }
             catch (Exception ex)
             {
@@ -401,10 +406,14 @@ namespace MinecraftProximity
                 TaskCompletionSource<bool> cs = new TaskCompletionSource<bool>();
                 nextTasks.Enqueue(async () =>
                 {
-                    Task<Coords?> t = client?.coordsReader?.GetCoords();
+                    //Task<Coords?> t = client?.coordsReader?.GetCoords();
 
-                    Log.Information("[CoordinateReader] Coords are {PrintedCoords}.", (t != null ? await t : null)?.ToString() ?? "null");
+                    //Log.Information("[CoordinateReader] Coords are {PrintedCoords}.", (t != null ? await t : null)?.ToString() ?? "null");
+                    Coords? a = client?.coords;
+                    Log.Information("[CoordinateReader] Coords are {PrintedCoords}.", a?.ToString() ?? "null");
+
                     cs.TrySetResult(true);
+                    await Task.CompletedTask;
                 });
                 await cs.Task;
                 await Task.Delay(TimeSpan.FromSeconds(30), tok);

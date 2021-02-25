@@ -20,24 +20,16 @@ namespace MinecraftProximity
     {
         public static Discord.Discord discord;
         public static Discord.LobbyManager lobbyManager;
-        //public static ConcurrentQueue<Func<Task>> nextTasks;
         public static long currentUserId;
-        //public static LogicClient client;
-        //public static LogicServer server;
-        //public static WebUI webUI;
 
         // Based on Discord Game DSK example:
         // discord_game_sdk.zip/examples/csharp/Program.cs
         // where discord_game_sdk.zip can be obtained from
         // https://dl-game-sdk.discordapp.net/2.5.6/discord_game_sdk.zip
 
-        //public static VoiceLobby currentLobby = null;
-        //static bool createLobby = true;
-        //public static bool isQuitRequested = false;
         public static bool isQuitting = false;
 
         public static ConfigFile configFile;
-        //public static ConcurrentQueue<(Task, CancellationTokenSource)> runningTasks;
 
         public static Instance instance;
 
@@ -45,7 +37,6 @@ namespace MinecraftProximity
         {
             Console.Title = "Proximity chat for Minecraft Beta 1.0.1";
 
-            //runningTasks = new ConcurrentQueue<(Task, CancellationTokenSource)>();
             configFile = new ConfigFile("config.json");
 
             if (!Legal.DoesUserAgree())
@@ -113,58 +104,17 @@ namespace MinecraftProximity
                 {
                     Console.WriteLine($"Received OnActivityJoin with secret {secret}");
 
-                    //if (isJoining)
                     if (nextJoinSecret != null)
                     {
                         Console.WriteLine("A join secret is already queued! Cancelled join.");
                         return;
                     }
 
-                    //isJoining = true;
-
                     if (instance?.TryJoinLobby(secret) != true)
                     {
                         nextJoinSecret = secret;
                         instance?.SignalStop();
                     }
-
-                    //instance = new Instance();
-                    //instance.Run(secret);
-
-                    //nextTasks.Enqueue(async () =>
-                    //{
-                    //    //webUI?.Stop();
-                    //    //server?.Stop();
-                    //    //client?.Stop();
-
-                    //    createLobby = false;
-                    //    if (currentLobby != null)
-                    //    {
-                    //        Log.Information("Disconnecting from previous lobby");
-                    //        await Task.Delay(500);
-                    //        //await currentLobby.Disconnect();
-                    //        currentLobby = null;
-                    //    }
-
-                    //    //                    await Task.Delay(2000);
-
-                    //    lobbyManager.ConnectLobbyWithActivitySecret(secret, (Discord.Result result, ref Discord.Lobby lobby) =>
-                    //    {
-                    //        if (result == Discord.Result.Ok)
-                    //        {
-                    //            Console.WriteLine("Connected to lobby {0}!", lobby.Id);
-                    //        }
-                    //        isJoining = false;
-                    //    });
-                    //    await Task.CompletedTask;
-                    // await Task.Delay(5000);
-
-                    //await VoiceLobby.FromSecret(secret);
-                    ////currentLobby = await VoiceLobby.FromSecret(secret);
-                    //return;
-                    //client?.Stop();
-                    //client = new LogicClient(currentLobby);
-                    //});
                 };
 
                 activityManager.OnActivityJoinRequest += (ref Discord.User user) =>
@@ -207,7 +157,6 @@ namespace MinecraftProximity
                     if (nextJoinSecret == null)
                         break;
                 }
-                //isQuitting = true;
             }
             catch (Exception ex)
             {
@@ -218,7 +167,6 @@ namespace MinecraftProximity
             {
                 discord.Dispose();
                 isQuitting = true;
-
             }
 
             cancelExecLoopSource.Cancel();
@@ -238,32 +186,6 @@ namespace MinecraftProximity
             Console.WriteLine("The program has terminated. Press any key to quit.");
             Console.ReadKey();
         }
-
-        //static async Task ExecuteCommand(string s)
-        //{
-
-        //}
-
-        //static async Task DoExecLoop(CancellationToken tok)
-        //{
-        //    while (!isQuitRequested)
-        //    {
-        //        tok.ThrowIfCancellationRequested();
-        //        string line = Console.ReadLine();
-        //        if (line == null)
-        //            break;
-        //        try
-        //        {
-        //            await ExecuteCommand(line);
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            Log.Error("Error executing command: {Message}", ex.Message);
-        //            Log.Error("StackTrace:");
-        //            Log.Error("{StackTrace}", ex.StackTrace);
-        //        }
-        //    }
-        //}
 
         static async Task Main(string[] args)
         {

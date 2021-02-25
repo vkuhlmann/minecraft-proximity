@@ -5,7 +5,6 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
-using Python.Runtime;
 
 namespace MinecraftProximity
 {
@@ -25,7 +24,7 @@ namespace MinecraftProximity
 
         public async Task createLobbyIfNone()
         {
-            if (currentLobby != null)
+            if (!createLobby || currentLobby != null)
             {
                 Log.Information("Not creating lobby: already exists");
                 return;
@@ -58,36 +57,8 @@ namespace MinecraftProximity
 
             nextTasks.Enqueue(async () =>
             {
-                //webUI?.Stop();
-                //server?.Stop();
-                //client?.Stop();
-
-                //createLobby = false;
-                //if (currentLobby != null)
-                //{
-                //    Log.Information("Disconnecting from previous lobby");
-                //    await Task.Delay(500);
-                //    //await currentLobby.Disconnect();
-                //    currentLobby = null;
-                //}
-
-                // await Task.Delay(2000);
-
-                //lobbyManager.ConnectLobbyWithActivitySecret(secret, (Discord.Result result, ref Discord.Lobby lobby) =>
-                //{
-                //    if (result == Discord.Result.Ok)
-                //    {
-                //        Console.WriteLine("Connected to lobby {0}!", lobby.Id);
-                //    }
-                //    //isJoining = false;
-                //});
-                //await Task.CompletedTask;
-                //await Task.Delay(5000);
-
-                //await VoiceLobby.FromSecret(secret, this);
                 currentLobby = await VoiceLobby.FromSecret(secret, this);
-                //return;
-                //client?.Stop();
+
                 if (currentLobby != null)
                     client = new LogicClient(currentLobby, this);
             });
@@ -170,10 +141,6 @@ namespace MinecraftProximity
 
                     nextTasks.Enqueue(scheduledTasks[i].Item2);
 
-                    //Task a = scheduledTasks[i].Item2(); //new Task(scheduledTasks[i].Item2);
-                    //runningTasks.Add(a);
-                    //a.RunSynchronously();
-
                     scheduledTasks.RemoveAt(i);
                 }
 
@@ -187,8 +154,6 @@ namespace MinecraftProximity
                 }
 
                 int cycleAround = runningTasks.Count;
-                //for (i = 0; i < runningTasks.Count; i++)
-                //{
                 for (i = 0; i < cycleAround; i++)
                 {
                     (Task, CancellationTokenSource) res;
@@ -213,8 +178,6 @@ namespace MinecraftProximity
                     TaskStatus st = t.Status;
                     try
                     {
-                        //if (st != TaskStatus.RanToCompletion && st != TaskStatus.Faulted)
-                        //	throw new Exception($"TaskStatus was {st}");
                         try
                         {
                             await t;
@@ -239,8 +202,6 @@ namespace MinecraftProximity
                             Log.Warning("Hiding errors, max rate has been reached", ex.Message);
                         }
                     }
-                    //runningTasks.Remove(t);
-                    //i--;
                 }
 
 
@@ -248,7 +209,6 @@ namespace MinecraftProximity
                 {
                     if (profiler.IsRunning())
                         profiler.Stop();
-                    //runningTasks.Remove(delayingTask);
 
                     if (nextTasks.TryDequeue(out Func<Task> b))
                     {
@@ -276,21 +236,6 @@ namespace MinecraftProximity
             client?.Stop();
 
             await currentLobby?.Disconnect();
-
-            //cancelPrintCoordsSource.Cancel();
-            //try
-            //{
-            //    printLoop.Wait();
-            //}
-            //catch (Exception) { }
-
-            //cancelExecLoopSource.Cancel();
-            //try
-            //{
-            //    execLoop.Wait();
-            //}
-            //catch (Exception) { }
-
         }
 
         public void DoHost()
@@ -308,9 +253,6 @@ namespace MinecraftProximity
                 TaskCompletionSource<bool> cs = new TaskCompletionSource<bool>();
                 nextTasks.Enqueue(async () =>
                 {
-                    //Task<Coords?> t = client?.coordsReader?.GetCoords();
-
-                    //Log.Information("[CoordinateReader] Coords are {PrintedCoords}.", (t != null ? await t : null)?.ToString() ?? "null");
                     Coords? a = client?.coords;
                     Log.Information("[CoordinateReader] Coords are {PrintedCoords}.", a?.ToString() ?? "null");
 

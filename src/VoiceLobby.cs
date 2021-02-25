@@ -42,45 +42,40 @@ namespace MinecraftProximity
 
         public static async Task<VoiceLobby> FromSecret(string secret, Instance instance)
         {
-            //Log.Information("From secret on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
             Log.Information("[Party] Joining lobby from secret.");
 
-            //Console.WriteLine("OnJoin {0}", secret);
             Discord.LobbyManager lobbyManager = Program.lobbyManager;
 
             TaskCompletionSource<VoiceLobby> completionSource = new TaskCompletionSource<VoiceLobby>();
 
             Discord.LobbyManager.ConnectLobbyWithActivitySecretHandler handler = (Discord.Result result, ref Discord.Lobby lobby) =>
             {
-                //return null;
-                //Log.Information($"Joining lobby. Result is {result}");
-
                 if (result == Discord.Result.Ok)
                 {
                     Log.Information($"Connected to lobby {lobby.Id}");
                     completionSource.SetResult(new VoiceLobby(lobby, instance));
-                }else
+                }
+                else
                 {
-                    Log.Information("Didn't receive Ok when trying to connect to lobby: {Result}", result);
+                    Log.Error("Failed to connect to lobby. Result was {Result}.", result);
+                    if (result == Discord.Result.InvalidCommand)
+                        Log.Information("If the error was caused by an 'already joined' error, please try restarting Discord.");
+
                     completionSource.SetResult(null);
                 }
-                //completionSource.SetResult(null);
             };
 
             lobbyManager.ConnectLobbyWithActivitySecret(secret, handler);
 
             VoiceLobby result = await completionSource.Task;
-            //return null;
-            result?.PrintMetadata();
+            //result?.PrintMetadata();
 
-            //return result;
-            //result.PrintUsers();
+            result.PrintUsers();
             return result;
         }
 
         public static async Task<VoiceLobby> Create(Instance instance)
         {
-            //Log.Information("Creating on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
             Discord.LobbyManager lobbyManager = Program.lobbyManager;
 
             // Create a lobby.
@@ -95,14 +90,12 @@ namespace MinecraftProximity
             {
                 if (result != Discord.Result.Ok)
                 {
-                    Log.Error("Couldn't make lobby, result was {Result}", result);
+                    Log.Error("Failed to create lobby. Result was {Result}", result);
                     completionSource.SetResult(null);
                     return;
                 }
 
                 Log.Information("[Party] Created lobby with id {LobbyId}. Capacity is {Capacity}, secret is {Secret}.", lobby.Id, lobby.Capacity, lobby.Secret);
-
-                //Log.Information("Created lobby {LobbyId} with capacity {Capacity} and secret {Secret}", lobby.Id, lobby.Capacity, lobby.Secret);
 
                 completionSource.SetResult(lobby);
             });
@@ -115,8 +108,7 @@ namespace MinecraftProximity
 
         public async Task Disconnect()
         {
-            //Log.Information("Disconnecting on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
-            Log.Information("[Party] Disconnecting from lobby {LobbyId}", lobby.Id);
+            Log.Information("[Party] Disconnecting from lobby {LobbyId}.", lobby.Id);
             await Task.Delay(500);
 
             Task a = currentTask.ContinueWith((prev) =>
@@ -129,9 +121,7 @@ namespace MinecraftProximity
                         completionSource.TrySetResult(result == Discord.Result.Ok);
                     });
                     await completionSource.Task;
-                    //return true;
                 });
-                //return true;
             });
 
             currentTask = a;
@@ -140,28 +130,19 @@ namespace MinecraftProximity
 
         void DoInit()
         {
-            //Log.Information("Doing init on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
-
             connVoiceHandler = (res) =>
             {
-                //Console.WriteLine($"Connected to voice chat! Result was: {_}");
-                //Log.Information("Connected to voice chat! Result was {Result}. (Lobby {LobbyId})", res, lobby.Id);
-                Log.Information("[Party] Voice chat is now connected. Result was {Result}. (Lobby {LobbyId})", res, lobby.Id);
+                if (res == Discord.Result.Ok)
+                    Log.Information("[Party] Voice chat is now connected.");
+                else
+                    Log.Error("[Party] Failed to connect to voice. Result was {Result}. (Lobby {LobbyId})", res, lobby.Id);
             };
-
-            //// Connect to voice chat.
-            //lobbyManager.ConnectVoice(lobby.Id, (res) =>
-            //{
-            //	//Console.WriteLine($"Connected to voice chat! Result was: {_}");
-            //	Log.Information("Connected to voice chat! Result was {Result}. (Lobby {LobbyId})", res, lobby.Id);
-            //});
 
             // Connect to voice chat.
             lobbyManager.ConnectVoice(lobby.Id, connVoiceHandler);
 
             //Log.Information("[Party] Connecting to network. (Lobby {LobbyId})", lobby.Id);
             lobbyManager.ConnectNetwork(lobby.Id);
-            //Log.Information("Opening channel. (Lobby {LobbyId})", lobby.Id);
 
             // Channel 0: reliable send to client
             lobbyManager.OpenNetworkChannel(lobby.Id, 0, true);
@@ -175,14 +156,6 @@ namespace MinecraftProximity
             // Channel 3: unreliable send/receive to server
             lobbyManager.OpenNetworkChannel(lobby.Id, 3, false);
 
-
-            //Log.Information("Opened channel. (Lobby {LobbyId})", lobby.Id);
-
-            //foreach (var user in lobbyManager.GetMemberUsers(lobby.Id))
-            //{
-            //	lobbyManager.SendNetworkMessage(lobby.Id, user.Id, 0,
-            //		Encoding.UTF8.GetBytes($"Hello, {user.Username}!"));
-            //}
 
             lobbyManager.OnLobbyMessage += (lobbyID, userID, data) =>
             {
@@ -228,9 +201,6 @@ namespace MinecraftProximity
             };
 
             SetAsActivity();
-
-            // Update activity.
-            //UpdateActivity(discord, lobby);
         }
 
         private void HandleOnMemberConnect(long lobbyId, long userId)
@@ -243,10 +213,8 @@ namespace MinecraftProximity
                 else
                     Log.Information("[Party] User {UserId} has connected to the lobby. (Lobby {LobbyId})", userId, lobbyId);
 
-                //Log.Information("User {0} ({1}) has connected to the lobby! (Lobby {2})", await GetFriendlyUsername(userId), userId, lobby.Id);
                 PrintUsers();
             });
-            //Console.WriteLine($"Lobby {this.lobby.Id}: Connect from {userId} ({await GetFriendlyUsername(userId)})");
         }
 
         private void HandleOnMemberDisconnect(long lobbyId, long userId)
@@ -258,15 +226,8 @@ namespace MinecraftProximity
                     Log.Information("[Party] User {Username}#{Discriminator} has disconnected from the lobby. (Lobby {LobbyId})", user.user.Username, user.user.Discriminator, lobbyId);
                 else
                     Log.Information("[Party] User {UserId} has disconnected from the lobby. (Lobby {LobbyId})", userId, lobbyId);
-
-                //Log.Information("User {0} ({1}) has connected to the lobby! (Lobby {2})", await GetFriendlyUsername(userId), userId, lobby.Id);
-
-
-                //Log.Information("User {0} ({1}) has disconnected from the lobby! (Lobby {2})", await GetFriendlyUsername(userId), userId, lobby.Id);
-                //Log.Information("User {UserFriendlyName} ({UserId}) has disconnected from the lobby. (Lobby {LobbyId})", await GetFriendlyUsername(userId), userId, lobbyId);
                 PrintUsers();
             });
-            //Console.WriteLine($"Lobby {this.lobby.Id}: Disconnect from {userId} ({await GetFriendlyUsername(userId)})");
         }
 
         public void SendBroadcast(string message)
@@ -336,17 +297,6 @@ namespace MinecraftProximity
             Console.WriteLine();
         }
 
-        //public void SendLobbyMessage()
-        //{
-        //	// Send everyone a message.
-        //	lobbyManager.SendLobbyMessage(lobby.Id, "Hi there!", (result) =>
-        //	{
-        //		Console.WriteLine($"Lobby message has been sent ({result})");
-        //	});
-        //}
-
-        //void UpdateMember(string id, )
-
         struct UserResult
         {
             public Discord.Result result;
@@ -374,37 +324,11 @@ namespace MinecraftProximity
 
         public async Task<string> GetFriendlyUsername(long userId)
         {
-            //Log.Information("Getting Friendly Username on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
-            //Log.Information("Blocking for 5 seconds");
-            //Thread.Sleep(5000);
-            //Log.Information("Done blocking");
-
             UserResult user = await UserResult.GetUser(userId);
             if (user.result == Discord.Result.Ok)
                 return $"{user.user.Username}#{user.user.Discriminator}";
             else
                 return $"{userId}";
-            //Log.Information("[Party] User {UserId} has connected to the lobby. (Lobby {LobbyId})", userId, lobbyId);
-
-            //UserResult res = await UserResult.GetUser(playerId);
-            //if (res.result == Discord.Result.Ok)
-            //{
-            //	return res.user.Username;
-            //}
-            //else
-            //{
-            //	return $"{playerId} (Couldn't obtain username: {res.result})";
-            //}
-            //Task<UserResult> usernameGet = UserResult.GetUser(playerId);
-            //UserResult res = usernameGet.Result;
-            //if (res.result == Discord.Result.Ok)
-            //{
-            //	return res.user.Username;
-            //}
-            //else
-            //{
-            //	return $"{playerId}";
-            //}
         }
 
         public async Task UpdateIsDead(long playerId, bool isDead)
@@ -415,7 +339,6 @@ namespace MinecraftProximity
             {
                 instance.nextTasks.Enqueue(async () =>
                 {
-                    //Console.WriteLine("lobby member has been updated: {0}", lobbyManager.GetMemberMetadataValue(lobbyID, userID, "hello"));
                     string playerName = await GetFriendlyUsername(playerId);
                     Log.Information($"Set {playerId} dead status to ${isDead}");
                 });
@@ -426,26 +349,6 @@ namespace MinecraftProximity
         public static void PrintAllLobbies()
         {
             Discord.LobbyManager lobbyManager = Program.lobbyManager;
-
-            //// Search lobbies.
-            //var query = lobbyManager.GetSearchQuery();
-            //// Filter by a metadata value.
-            ////query.Filter("metadata.a", Discord.LobbySearchComparison.GreaterThan, Discord.LobbySearchCast.Number, "455");
-            ////query.Sort("metadata.a", Discord.LobbySearchCast.Number, "0");
-            //// Only return 1 result max.
-            ////query.Limit(1);
-
-            //lobbyManager.Search(query, (_) =>
-            //{
-            //	Console.WriteLine("Lobbies:");
-
-
-            //	Console.WriteLine("search returned {0} lobbies", lobbyManager.LobbyCount());
-            //	if (lobbyManager.LobbyCount() == 1)
-            //	{
-            //		Console.WriteLine("first lobby secret: {0}", lobbyManager.GetLobby(lobbyManager.GetLobbyId(0)).Secret);
-            //	}
-            //});
 
             Console.WriteLine("Lobbies:");
 
@@ -495,25 +398,10 @@ namespace MinecraftProximity
 
             activityManager.UpdateActivity(activity, result =>
             {
-                //Console.WriteLine("Updated activity {0}", result);
                 if (result == Discord.Result.Ok)
                     Log.Information("[Party] Activity has been updated.");
                 else
                     Log.Error("[Party] Failed to set activity. Result code was {Res}.", result);
-
-                // Send an invite to another user for this activity.
-                // Receiver should see an invite in their DM.
-                // Use a relationship user's ID for this.
-                // activityManager
-                //   .SendInvite(
-                //       364843917537050624,
-                //       Discord.ActivityActionType.Join,
-                //       "",
-                //       inviteResult =>
-                //       {
-                //           Console.WriteLine("Invite {0}", inviteResult);
-                //       }
-                //   );
             });
         }
 

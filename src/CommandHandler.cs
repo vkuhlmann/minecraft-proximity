@@ -20,8 +20,6 @@ namespace MinecraftProximity
                     break;
                 try
                 {
-                    //Program.nextTasks.Enqueue(async () =>
-                    //{
                     try
                     {
                         await ExecuteCommand(line);
@@ -30,7 +28,6 @@ namespace MinecraftProximity
                     {
                         Log.Error($"An error occured while executing the command: {ex}");
                     }
-                    //                    });
                 }
                 catch (Exception ex)
                 {

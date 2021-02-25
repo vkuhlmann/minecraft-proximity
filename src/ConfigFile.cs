@@ -24,7 +24,8 @@ namespace MinecraftProximity
         public ConfigFile(string path = "config.json")
         {
             DirectoryInfo dir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);
-
+            if (dir.Name == "bin")
+                dir = dir.Parent;
             Path = System.IO.Path.Combine(dir.FullName, path);
             Reload();
         }

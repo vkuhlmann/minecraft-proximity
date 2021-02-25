@@ -330,6 +330,7 @@ namespace MinecraftProximity
                         await Task.Delay(1000 / 100);
                 }
 
+                webUI?.Stop();
                 server?.Stop();
                 client?.Stop();
 
@@ -412,6 +413,7 @@ namespace MinecraftProximity
                     Log.Information("[CoordinateReader] Coords are {PrintedCoords}.", a?.ToString() ?? "null");
 
                     cs.TrySetResult(true);
+                    await Task.CompletedTask;
                 });
                 await cs.Task;
                 await Task.Delay(TimeSpan.FromSeconds(30), tok);

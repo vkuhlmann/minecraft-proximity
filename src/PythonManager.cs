@@ -48,7 +48,7 @@ namespace MinecraftProximity
             DirectoryInfo dir = assemblyDir;
             while (dir != null)
             {
-                if (File.Exists(Path.Combine(dir.FullName, "coordinatereader.py")))
+                if (File.Exists(Path.Combine(dir.FullName, "logicserver.py")))
                     break;
                 dir = dir.Parent;
             }

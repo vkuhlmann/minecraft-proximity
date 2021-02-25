@@ -11,6 +11,7 @@ import http.server
 from http.server import HTTPServer
 import time
 import os
+import encodings.idna
 
 logging.basicConfig()
 
@@ -197,8 +198,6 @@ async def doTimeUpdates():
         print(f"Exception doing updates: {e}")
         return
 
-loop = asyncio.new_event_loop()
-
 async def DoUpdateMap(obj):
     global currentState
 
@@ -216,8 +215,13 @@ def DoDensityMapServer():
     start_server = websockets.serve(socket_listen, "localhost", 6789)
 
     #print("Starting server!")
-    asyncio.get_event_loop().run_until_complete(start_server)
+    res = asyncio.get_event_loop().run_until_complete(start_server)
     asyncio.get_event_loop().run_until_complete(asyncio.wait([doTimeUpdates()]))
+
+    #print(f"res is {res}")
+    if res != None:
+        res.close()
+        asyncio.get_event_loop().run_until_complete(res.wait_closed())
     #print("Server is done")
 
 httpThr = None
@@ -227,6 +231,7 @@ currentState = None
 httpd = None
 isServingForever = False
 httpdDirectory = None
+loop = None
 
 class RequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, request, client_address, server):
@@ -245,10 +250,15 @@ def do_httpd():
     httpd.serve_forever()
     isServingForever = False
 
+    httpd.server_close()
+
 def start_webui(basepath, onupdated_callback_p):
-    global thr, onupdated_callback, httpd, httpdDirectory
+    global thr, onupdated_callback, httpd, httpdDirectory, httpThr, loop
     if thr != None:
+        print("Thr was already non-null!")
         return
+
+    loop = asyncio.new_event_loop()
 
     httpdDirectory = os.path.join(basepath, "webui")
 
@@ -257,14 +267,12 @@ def start_webui(basepath, onupdated_callback_p):
     thr = threading.Thread(target=DoDensityMapServer)
     thr.start()
 
-    time.sleep(1)
-
     httpThr = threading.Thread(target=do_httpd)
     httpThr.start()
     print("WebUI has started!")
 
 def stop_webui():
-    global isServingForever
+    global isServingForever, isQuitRequested, httpThr, httpd, thr, loop
 
     isQuitRequested = True
     if isServingForever:
@@ -273,10 +281,14 @@ def stop_webui():
 
     if httpThr != None:
         httpThr.join()
+    httpThr = None
 
     if thr != None:
         thr.join()
+    thr = None
+
     loop.call_soon_threadsafe(loop.stop)
+
     print("WebUI has shut down")
 
 def put_data(data):

@@ -64,6 +64,9 @@ namespace MinecraftProximity
                 if (module == null)
                     return;
                 module.stop_webui();
+
+                module = null;
+                scope = null;
             }
             Log.Information("[WebUI] Shut down.");
         }

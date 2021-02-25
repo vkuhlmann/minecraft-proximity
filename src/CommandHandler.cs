@@ -229,7 +229,7 @@ namespace MinecraftProximity
             if (commandAliases.TryGetValue(cmdName, out string actualCmd))
                 cmdName = actualCmd;
 
-            if (commands.TryGetValue(m.Groups["cmdName"].Value, out Func<string, Task> value))
+            if (commands.TryGetValue(cmdName, out Func<string, Task> value))
             {
                 await value(m.Groups["args"].Value);
             }

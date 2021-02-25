@@ -161,6 +161,7 @@ async def unregister(websocket):
     await notify_users()
 
 async def socket_listen(websocket, path):
+    #print("Receiving socket")
     # register(websocket) sends user_event() to websocket
     await register(websocket)
     try:
@@ -272,7 +273,7 @@ def start_webui(basepath, onupdated_callback_p):
     print("WebUI has started!")
 
 def stop_webui():
-    global isServingForever, isQuitRequested, httpThr, httpd, thr, loop
+    global isServingForever, isQuitRequested, httpThr, httpd, thr, loop, onupdated_callback
 
     isQuitRequested = True
     if isServingForever:
@@ -286,6 +287,8 @@ def stop_webui():
     if thr != None:
         thr.join()
     thr = None
+
+    onupdated_callback = None
 
     loop.call_soon_threadsafe(loop.stop)
 

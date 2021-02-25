@@ -26,14 +26,14 @@ namespace MinecraftProximity
         {
             if (!createLobby || currentLobby != null)
             {
-                Log.Information("Not creating lobby: already exists");
+                Log.Information("Not creating lobby: already exists.");
                 return;
             }
 
             currentLobby = await VoiceLobby.Create(this);
             if (currentLobby == null)
             {
-                Log.Error("Lobby was null");
+                Log.Error("Lobby was null.");
                 return;
             }
 
@@ -147,7 +147,7 @@ namespace MinecraftProximity
                 if (Environment.TickCount64 >= errorBunchEnd)
                 {
                     if (errorBunchCount > errorBunchMax)
-                        Log.Information("Showing errors again. Hid {NumErrors} errors", errorBunchCount - errorBunchMax);
+                        Log.Information("Showing errors again. Hid {NumErrors} errors.", errorBunchCount - errorBunchMax);
 
                     errorBunchCount = 0;
                     errorBunchEnd = Environment.TickCount64 + errorBunchDur;
@@ -199,7 +199,7 @@ namespace MinecraftProximity
                         }
                         else if (errorBunchCount == errorBunchMax + 1)
                         {
-                            Log.Warning("Hiding errors, max rate has been reached", ex.Message);
+                            Log.Warning("Hiding errors, max rate has been reached.", ex.Message);
                         }
                     }
                 }

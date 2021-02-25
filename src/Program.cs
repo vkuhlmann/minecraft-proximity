@@ -36,18 +36,18 @@ namespace MinecraftProximity
         static async Task RunAsync(string[] args)
         {
             Console.Title = "Proximity chat for Minecraft Beta 1.0.1";
+            instance = null;
 
             configFile = new ConfigFile("config.json");
 
             if (!Legal.DoesUserAgree())
             {
                 Console.WriteLine("The legal requirements have not been agreed upon, and hence the program must terminate.");
-                Console.WriteLine("Press any key to quit");
+                Console.WriteLine("Press any key to quit.");
                 Console.ReadKey(true);
                 return;
             }
 
-            instance = new Instance();
             var clientID = "814073574499287102";
 
             if (configFile.Json["multiDiscord"]?.Value<bool>() == true)
@@ -143,13 +143,14 @@ namespace MinecraftProximity
                 userManager.OnCurrentUserUpdate += () =>
                 {
                     var currentUser = userManager.GetCurrentUser();
-                    Log.Information("Current user is {Username}#{Discriminator} ({Id})", currentUser.Username, currentUser.Discriminator, currentUser.Id);
+                    Log.Information("Current user is {Username}#{Discriminator} ({Id}).", currentUser.Username, currentUser.Discriminator, currentUser.Id);
 
                     currentUserId = currentUser.Id;
                 };
 
                 while (true)
                 {
+                    instance = new Instance();
                     string secret = nextJoinSecret;
                     nextJoinSecret = null;
                     await instance.Run(secret);
@@ -205,7 +206,7 @@ namespace MinecraftProximity
                 Console.WriteLine(ex);
                 Console.WriteLine(ex.StackTrace);
                 Console.WriteLine();
-                Console.WriteLine("Press any key to quit");
+                Console.WriteLine("Press any key to quit.");
                 Console.ReadKey();
             }
         }

@@ -159,7 +159,7 @@ namespace MinecraftProximity
                 {
                     if (result == Discord.Result.Ok)
                     {
-                        Console.WriteLine("The overlay has been opened in Discord");
+                        Console.WriteLine("The overlay has been opened in Discord.");
                     }
                 });
                 await Task.CompletedTask;

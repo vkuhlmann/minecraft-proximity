@@ -74,7 +74,7 @@ namespace MinecraftProximity
 
             if (!(a is JArray arr))
             {
-                Log.Error("[Legal] Error reading config file");
+                Log.Error("[Legal] Error reading config file.");
                 return false;
             }
 
@@ -99,13 +99,14 @@ namespace MinecraftProximity
             Console.WriteLine($"Use of this program is subject to the {friendlyName}, which can be found at");
             Console.WriteLine($"  {legalFile.Value.path}");
             //bool hasAgreed = AskYesNoQuestion($"Do you agree with the {friendlyName}?");
-            bool hasAgreed = AskYesNoQuestion($"\x1b[92mDo you agree with the {friendlyName}?\x1b[0m");
+            bool hasAgreed = AskYesNoQuestion($"\x1b[92mDo you agree with the {friendlyName}? (Y)es/(N)o\x1b[0m");
             if (!hasAgreed)
                 return false;
 
             arr.Add(legalFile.Value.majorVersion);
             Program.configFile.Save();
             Log.Information("[Legal] The choice has been saved in the config file :)");
+            Console.WriteLine();
             return true;
         }
 

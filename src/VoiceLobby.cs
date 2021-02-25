@@ -52,7 +52,7 @@ namespace MinecraftProximity
             {
                 if (result == Discord.Result.Ok)
                 {
-                    Log.Information($"Connected to lobby {lobby.Id}");
+                    Log.Information($"Connected to lobby {lobby.Id}.");
                     completionSource.SetResult(new VoiceLobby(lobby, instance));
                 }
                 else
@@ -340,7 +340,7 @@ namespace MinecraftProximity
                 instance.nextTasks.Enqueue(async () =>
                 {
                     string playerName = await GetFriendlyUsername(playerId);
-                    Log.Information($"Set {playerId} dead status to ${isDead}");
+                    Log.Information($"Set {playerId} dead status to ${isDead}.");
                 });
             });
             await Task.CompletedTask;

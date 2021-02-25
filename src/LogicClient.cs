@@ -7,7 +7,7 @@ using System.Threading;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
-using System.Collections.Concurrent;
+using System.Linq;
 
 namespace MinecraftProximity
 {
@@ -231,19 +231,27 @@ namespace MinecraftProximity
             }
             else if (action == "changeServer")
             {
-                long user = data["userId"].Value<long>();
+                long userId = data["userId"].Value<long>();
 
-                if (user != Program.currentUserId && instance.server != null)
+                string username = null;
+                if (voiceLobby != null) {
+                    try
+                    {
+                        username = voiceLobby.GetMembers().First(user => user.Id == userId).Username;
+                    }
+                    catch (InvalidOperationException) { }
+                }
+
+                if (userId != Program.currentUserId && instance.server != null)
                 {
                     Log.Information("[Client] Stopping own server.");
                     instance.server?.Stop();
                     instance.server = null;
                 }
 
-                serverUser = user;
+                serverUser = userId;
 
-
-                Log.Information("[Client] Changed server to user {UserId}", serverUser);
+                Log.Information("[Client] Changed server to user {UserId}.", username ?? userId.ToString());
                 RefreshPlayers();
             }
             else if (action == "updatemap")
@@ -256,7 +264,7 @@ namespace MinecraftProximity
             }
             else
             {
-                Log.Warning("[Client] Unknown action \"{Action}\"", action);
+                Log.Warning("[Client] Unknown action \"{Action}\".", action);
             }
         }
 
@@ -288,7 +296,7 @@ namespace MinecraftProximity
         {
             try
             {
-                Log.Information("[Client] Starting send coordinates loop");
+                Log.Information("[Client] Starting send coordinates loop.");
                 long ticks = Environment.TickCount64;
                 long sendIntervalTicks;
 

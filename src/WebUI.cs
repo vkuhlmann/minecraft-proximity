@@ -11,11 +11,19 @@ using System.Text.RegularExpressions;
 
 namespace MinecraftProximity
 {
-    class WebUI
+    public class WebUI
     {
         PyScope scope;
         dynamic module;
         Action<string> updateDelegate;
+        Instance instance;
+
+        public WebUI(Instance instance)
+        {
+            this.instance = instance;
+            scope = null;
+            updateDelegate = null;
+        }
 
         public void Start()
         {
@@ -83,7 +91,7 @@ namespace MinecraftProximity
 
         public void SendUpdate(string data)
         {
-            if (Program.client == null)
+            if (instance.client == null)
                 return;
 
             JObject message = JObject.FromObject(new
@@ -93,7 +101,7 @@ namespace MinecraftProximity
             });
 
             //transmitsProcessing.Enqueue(true);
-            Program.client.voiceLobby.SendNetworkJson(Program.client.serverUser, 3, message);
+            instance.client.voiceLobby.SendNetworkJson(instance.client.serverUser, 3, message);
         }
 
         public bool PythonHandleCommand(string subcommand, string args)

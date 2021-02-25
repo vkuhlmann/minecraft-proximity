@@ -32,7 +32,7 @@ namespace MinecraftProximity
         }
     }
 
-    class LogicClient
+    public class LogicClient
     {
         public VoiceLobby voiceLobby { get; protected set; }
         Dictionary<long, Player> players;
@@ -46,13 +46,16 @@ namespace MinecraftProximity
 
         CancellationTokenSource cancelTransmitCoords;
         Task transmitCoordsTask;
+        Instance instance;
+
         //ConcurrentQueue<bool> transmitsProcessing;
 
         //List<Player> players;
 
-        public LogicClient(VoiceLobby voiceLobby)
+        public LogicClient(VoiceLobby voiceLobby, Instance instance)
         {
             this.voiceLobby = voiceLobby;
+            this.instance = instance;
 
             //coordsReader = new CoordinateReader();
             coordsReader = new CoordinateReaderSharp();
@@ -72,7 +75,7 @@ namespace MinecraftProximity
 
             cancelTransmitCoords = new CancellationTokenSource();
             transmitCoordsTask = DoSendCoordinatesLoop(cancelTransmitCoords.Token);
-            Program.runningTasks.Enqueue((transmitCoordsTask, cancelTransmitCoords));
+            instance.runningTasks.Enqueue((transmitCoordsTask, cancelTransmitCoords));
 
             //Program.nextTasks.Enqueue(async () =>
             //{
@@ -129,7 +132,7 @@ namespace MinecraftProximity
                 }
 
                 if (smallestUserId == Program.currentUserId)
-                    Program.DoHost();
+                    instance.DoHost();
             }
         }
 
@@ -138,7 +141,7 @@ namespace MinecraftProximity
             if (channel != 0 && channel != 1)
                 return;
 
-            Program.nextTasks.Enqueue(async () =>
+            instance.nextTasks.Enqueue(async () =>
             {
                 await HandleMessage(jObject);
             });
@@ -230,11 +233,11 @@ namespace MinecraftProximity
             {
                 long user = data["userId"].Value<long>();
 
-                if (user != Program.currentUserId && Program.server != null)
+                if (user != Program.currentUserId && instance.server != null)
                 {
                     Log.Information("[Client] Stopping own server.");
-                    Program.server?.Stop();
-                    Program.server = null;
+                    instance.server?.Stop();
+                    instance.server = null;
                 }
 
                 serverUser = user;
@@ -245,11 +248,11 @@ namespace MinecraftProximity
             }
             else if (action == "updatemap")
             {
-                Program.webUI?.ReceiveUpdate(data["data"].ToString());
+                instance.webUI?.ReceiveUpdate(data["data"].ToString());
             }
             else if (action == "updateplayers")
             {
-                Program.webUI?.UpdatePlayers(data["data"].ToString());
+                instance.webUI?.UpdatePlayers(data["data"].ToString());
             }
             else
             {
@@ -330,7 +333,7 @@ namespace MinecraftProximity
 
                         Coords? coords = await coordsReader.GetCoords();
 
-                        Program.nextTasks.Enqueue(async () =>
+                        instance.nextTasks.Enqueue(async () =>
                         {
                             completionSource.TrySetResult(await SendCoordinates(coords));
                         });

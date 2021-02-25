@@ -12,7 +12,7 @@ namespace MinecraftProximity
     {
         public static async Task DoHandleLoop(CancellationToken cancTok)
         {
-            while (!Program.isQuitRequested)
+            while (!Program.isQuitting)
             {
                 cancTok.ThrowIfCancellationRequested();
                 string line = Console.ReadLine();
@@ -66,7 +66,9 @@ namespace MinecraftProximity
                 return;
             }
 
-            Program.isQuitRequested = true;
+            Program.isQuitting = true;
+            Program.instance.SignalStop();
+            //Program.isQuitRequested = true;
             await Task.CompletedTask;
         }
 
@@ -78,9 +80,11 @@ namespace MinecraftProximity
                 return;
             }
 
-            Program.nextTasks.Enqueue(async () =>
+            Instance instance = Program.instance;
+
+            instance?.nextTasks.Enqueue(async () =>
             {
-                await Program.createLobbyIfNone();
+                await instance.createLobbyIfNone();
             });
             await Task.CompletedTask;
         }
@@ -93,9 +97,11 @@ namespace MinecraftProximity
                 return;
             }
 
-            Program.nextTasks.Enqueue(async () =>
+            Instance instance = Program.instance;
+
+            instance?.nextTasks.Enqueue(async () =>
             {
-                Program.DoHost();
+                instance.DoHost();
                 await Task.CompletedTask;
             });
             await Task.CompletedTask;
@@ -109,9 +115,11 @@ namespace MinecraftProximity
                 return;
             }
 
-            Program.nextTasks.Enqueue(async () =>
+            Instance instance = Program.instance;
+
+            instance?.nextTasks.Enqueue(async () =>
             {
-                Program.currentLobby?.SendBroadcast(argument);
+                instance.currentLobby?.SendBroadcast(argument);
                 await Task.CompletedTask;
             });
             await Task.CompletedTask;
@@ -127,15 +135,17 @@ namespace MinecraftProximity
 
             // Regex.Match(s, "screen (?<screenNum>)")
 
-            Program.nextTasks.Enqueue(async () =>
+            Instance instance = Program.instance;
+
+            instance?.nextTasks.Enqueue(async () =>
             {
-                if (Program.client == null)
+                if (instance.client == null)
                 {
                     Console.WriteLine("Client is null");
                     return;
                 }
 
-                Program.client.coordsReader.SetScreen(int.Parse(argument));
+                instance.client.coordsReader.SetScreen(int.Parse(argument));
                 await Task.CompletedTask;
             });
             await Task.CompletedTask;
@@ -143,7 +153,9 @@ namespace MinecraftProximity
 
         static async Task DoOverlayCommand(string argument)
         {
-            Program.nextTasks.Enqueue(async () =>
+            Instance instance = Program.instance;
+
+            instance?.nextTasks.Enqueue(async () =>
             {
                 var overlayManager = Program.discord.GetOverlayManager();
                 overlayManager.OpenVoiceSettings((result) =>
@@ -170,7 +182,9 @@ namespace MinecraftProximity
             string subcommand = m.Groups["subcommand"].Value;
             string args = m.Groups["args"].Value;
 
-            Program.nextTasks.Enqueue(async () =>
+            Instance instance = Program.instance;
+
+            instance?.nextTasks.Enqueue(async () =>
             {
                 if (subcommand == "start")
                 {
@@ -180,13 +194,13 @@ namespace MinecraftProximity
                         return;
                     }
 
-                    if (Program.webUI != null)
+                    if (instance.webUI != null)
                     {
                         Console.WriteLine("WebUI already exists!");
                         return;
                     }
-                    Program.webUI = new WebUI();
-                    Program.webUI.Start();
+                    instance.webUI = new WebUI(instance);
+                    instance.webUI.Start();
                 }
                 else if (subcommand == "stop")
                 {
@@ -195,10 +209,10 @@ namespace MinecraftProximity
                         Console.WriteLine("Subcommand stop does not take any arguments. Cancelling.");
                         return;
                     }
-                    Program.webUI?.Stop();
-                    Program.webUI = null;
+                    instance.webUI?.Stop();
+                    instance.webUI = null;
                 }
-                else if (Program.webUI != null && Program.webUI.PythonHandleCommand(subcommand, args))
+                else if (instance.webUI != null && instance.webUI.PythonHandleCommand(subcommand, args))
                 {
                     //else if (subcommand == "xz")
                     //{
@@ -229,11 +243,13 @@ namespace MinecraftProximity
             if (commandAliases.TryGetValue(cmdName, out string actualCmd))
                 cmdName = actualCmd;
 
+            Instance instance = Program.instance;
+
             if (commands.TryGetValue(cmdName, out Func<string, Task> value))
             {
                 await value(m.Groups["args"].Value);
             }
-            else if (Program.server != null && Program.server.HandleCommand(cmdName, m.Groups["args"].Value))
+            else if (instance?.server?.HandleCommand(cmdName, m.Groups["args"].Value) == true)
             {
 
             }

@@ -17,7 +17,7 @@ namespace MinecraftProximity
 {
     using VolumesMatrix = List<(long, List<(long, float)>)>;
 
-    class ServerPlayer
+    public class ServerPlayer
     {
         public long userId;
         public string playerName;
@@ -34,7 +34,7 @@ namespace MinecraftProximity
         }
     }
 
-    class LogicServer
+    public class LogicServer
     {
         Dictionary<long, ServerPlayer> playersMap;
         ConcurrentQueue<List<ServerPlayer>> playersStores;
@@ -50,10 +50,12 @@ namespace MinecraftProximity
 
         RepeatProfiler calculateVolumesProfiler;
         bool isSettingMap;
+        Instance instance;
 
-        public LogicServer(VoiceLobby voiceLobby)
+        public LogicServer(VoiceLobby voiceLobby, Instance instance)
         {
             isSettingMap = false;
+            this.instance = instance;
 
             Log.Information("[Server] Initializing server...");
             this.voiceLobby = voiceLobby;
@@ -107,7 +109,7 @@ namespace MinecraftProximity
 
             cancelTransmitTask = new CancellationTokenSource();
             transmitTask = DoRecalcLoop(cancelTransmitTask.Token);
-            Program.runningTasks.Enqueue((transmitTask, cancelTransmitTask));
+            instance.runningTasks.Enqueue((transmitTask, cancelTransmitTask));
 
             Log.Information("[Server] Initialization done.");
         }
@@ -484,7 +486,7 @@ namespace MinecraftProximity
                         //Dictionary<long, float> a;
                         //SetUserVolumes(null, a.AsEnumerable().Select(it => (it.Key, it.Value)));
 
-                        Program.nextTasks.Enqueue(async () =>
+                        instance.nextTasks.Enqueue(async () =>
                         {
                             //stats.Start();
                             foreach ((long userId, List<(long, float)> li) in ans)

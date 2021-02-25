@@ -27,10 +27,12 @@ namespace MinecraftProximity
 
         public Task currentTask;
         public Discord.LobbyManager.ConnectVoiceHandler connVoiceHandler;
+        public Instance instance;
 
-        VoiceLobby(Discord.Lobby lobby)
+        VoiceLobby(Discord.Lobby lobby, Instance instance)
         {
             this.lobby = lobby;
+            this.instance = instance;
             lobbyManager = Program.lobbyManager;
             currentTask = Task.CompletedTask;
 
@@ -38,7 +40,7 @@ namespace MinecraftProximity
             Log.Information("[Party] Lobby setup finished.");
         }
 
-        public static async Task<VoiceLobby> FromSecret(string secret)
+        public static async Task<VoiceLobby> FromSecret(string secret, Instance instance)
         {
             //Log.Information("From secret on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
             Log.Information("[Party] Joining lobby from secret.");
@@ -48,19 +50,35 @@ namespace MinecraftProximity
 
             TaskCompletionSource<VoiceLobby> completionSource = new TaskCompletionSource<VoiceLobby>();
 
-            lobbyManager.ConnectLobbyWithActivitySecret(secret, (Discord.Result result, ref Discord.Lobby lobby) =>
+            Discord.LobbyManager.ConnectLobbyWithActivitySecretHandler handler = (Discord.Result result, ref Discord.Lobby lobby) =>
             {
-                //Log.Information($"Connected to lobby {lobby.Id}");
-                completionSource.SetResult(new VoiceLobby(lobby));
-            });
+                //return null;
+                //Log.Information($"Joining lobby. Result is {result}");
+
+                if (result == Discord.Result.Ok)
+                {
+                    Log.Information($"Connected to lobby {lobby.Id}");
+                    completionSource.SetResult(new VoiceLobby(lobby, instance));
+                }else
+                {
+                    Log.Information("Didn't receive Ok when trying to connect to lobby: {Result}", result);
+                    completionSource.SetResult(null);
+                }
+                //completionSource.SetResult(null);
+            };
+
+            lobbyManager.ConnectLobbyWithActivitySecret(secret, handler);
 
             VoiceLobby result = await completionSource.Task;
-            //result.PrintMetadata();
-            result.PrintUsers();
+            //return null;
+            result?.PrintMetadata();
+
+            //return result;
+            //result.PrintUsers();
             return result;
         }
 
-        public static async Task<VoiceLobby> Create()
+        public static async Task<VoiceLobby> Create(Instance instance)
         {
             //Log.Information("Creating on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
             Discord.LobbyManager lobbyManager = Program.lobbyManager;
@@ -92,16 +110,18 @@ namespace MinecraftProximity
             Discord.Lobby? lobby = await completionSource.Task;
             if (!lobby.HasValue)
                 return null;
-            return new VoiceLobby(lobby.Value);
+            return new VoiceLobby(lobby.Value, instance);
         }
 
         public async Task Disconnect()
         {
             //Log.Information("Disconnecting on thread {ThreadName} ({ThreadId}).", Thread.CurrentThread.Name, Thread.CurrentThread.ManagedThreadId);
             Log.Information("[Party] Disconnecting from lobby {LobbyId}", lobby.Id);
+            await Task.Delay(500);
+
             Task a = currentTask.ContinueWith((prev) =>
             {
-                Program.nextTasks.Enqueue(async () =>
+                instance.nextTasks.Enqueue(async () =>
                 {
                     TaskCompletionSource<bool> completionSource = new TaskCompletionSource<bool>();
                     lobbyManager.DisconnectLobby(lobby.Id, (Discord.Result result) =>
@@ -215,7 +235,7 @@ namespace MinecraftProximity
 
         private void HandleOnMemberConnect(long lobbyId, long userId)
         {
-            Program.nextTasks.Enqueue(async () =>
+            instance.nextTasks.Enqueue(async () =>
             {
                 UserResult user = await UserResult.GetUser(userId);
                 if (user.result == Discord.Result.Ok)
@@ -231,7 +251,7 @@ namespace MinecraftProximity
 
         private void HandleOnMemberDisconnect(long lobbyId, long userId)
         {
-            Program.nextTasks.Enqueue(async () =>
+            instance.nextTasks.Enqueue(async () =>
             {
                 UserResult user = await UserResult.GetUser(userId);
                 if (user.result == Discord.Result.Ok)
@@ -393,7 +413,7 @@ namespace MinecraftProximity
             memberTransaction.SetMetadata("isDead", $"{isDead}");
             lobbyManager.UpdateMember(lobby.Id, playerId, memberTransaction, (result) =>
             {
-                Program.nextTasks.Enqueue(async () =>
+                instance.nextTasks.Enqueue(async () =>
                 {
                     //Console.WriteLine("lobby member has been updated: {0}", lobbyManager.GetMemberMetadataValue(lobbyID, userID, "hello"));
                     string playerName = await GetFriendlyUsername(playerId);

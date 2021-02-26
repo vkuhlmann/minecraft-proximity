@@ -4,7 +4,7 @@
 This application reads your Minecraft coordinates from the screen (use HUD from Vanilla Tweaks or provisionally the F3 screen).
 Then, it uses the Discord Game API to set the volumes of you and your party. And then: have fun!
 
-My one-take demo: https://youtu.be/kvT7hmtxVss
+My one-take demo (not great, but for now sufficient I'd say): https://youtu.be/kvT7hmtxVss
 
 _The project is still early in its development. Please contact me if you want to help test it._
 

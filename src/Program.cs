@@ -148,7 +148,7 @@ namespace MinecraftProximity
                         return;
                     }
 
-                    if (instance?.TryJoinLobby(secret) != true)
+                    if (instance?.TryQueueJoinLobby(secret) != true)
                     {
                         nextJoinSecret = secret;
                         instance?.SignalStop();
@@ -163,7 +163,7 @@ namespace MinecraftProximity
 
                 activityManager.OnActivityInvite += (Discord.ActivityActionType Type, ref Discord.User user, ref Discord.Activity activity2) =>
                 {
-                    Log.Information("Received invite from {Username}#{Discriminator} to {Type} {activity2.Name}.", user.Username, user.Discriminator);
+                    Log.Information("Received invite from {Username}#{Discriminator} to {Type} {ActivityName}.", user.Username, user.Discriminator, activity2.Type, activity2.Name);
                     Log.Information("The invite can be accepted from within Discord.");
                 };
 

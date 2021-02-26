@@ -79,7 +79,7 @@ namespace MinecraftProximity
 
             Instance instance = Program.instance;
 
-            instance?.nextTasks.Enqueue(async () =>
+            instance?.Queue("CreateLobby", async () =>
             {
                 await instance.createLobbyIfNone();
             });
@@ -96,7 +96,7 @@ namespace MinecraftProximity
 
             Instance instance = Program.instance;
 
-            instance?.nextTasks.Enqueue(async () =>
+            instance?.Queue("DoHost", async () =>
             {
                 instance.DoHost();
                 await Task.CompletedTask;
@@ -114,7 +114,7 @@ namespace MinecraftProximity
 
             Instance instance = Program.instance;
 
-            instance?.nextTasks.Enqueue(async () =>
+            instance?.Queue("SendBroadcast", async () =>
             {
                 instance.currentLobby?.SendBroadcast(argument);
                 await Task.CompletedTask;
@@ -134,7 +134,7 @@ namespace MinecraftProximity
 
             Instance instance = Program.instance;
 
-            instance?.nextTasks.Enqueue(async () =>
+            instance?.Queue("SetScreen", async () =>
             {
                 if (instance.client == null)
                 {
@@ -152,7 +152,7 @@ namespace MinecraftProximity
         {
             Instance instance = Program.instance;
 
-            instance?.nextTasks.Enqueue(async () =>
+            instance?.Queue("OpenOverlay", async () =>
             {
                 var overlayManager = Program.discord.GetOverlayManager();
                 overlayManager.OpenVoiceSettings((result) =>
@@ -181,7 +181,7 @@ namespace MinecraftProximity
 
             Instance instance = Program.instance;
 
-            instance?.nextTasks.Enqueue(async () =>
+            instance?.Queue("HandleWebUICommand", async () =>
             {
                 if (subcommand == "start")
                 {

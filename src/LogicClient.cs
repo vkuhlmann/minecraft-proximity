@@ -80,7 +80,7 @@ namespace MinecraftProximity
 
             cancelTransmitCoords = new CancellationTokenSource();
             transmitCoordsTask = DoSendCoordinatesLoop(cancelTransmitCoords.Token);
-            instance.runningTasks.Enqueue((transmitCoordsTask, cancelTransmitCoords));
+            instance.RegisterRunning("Client_SendCoordinatesLoop", transmitCoordsTask, cancelTransmitCoords);
 
             //Program.nextTasks.Enqueue(async () =>
             //{
@@ -146,7 +146,7 @@ namespace MinecraftProximity
             if (channel != 0 && channel != 1)
                 return;
 
-            instance.nextTasks.Enqueue(async () =>
+            instance.Queue("Client_HandleNetworkMessage", async () =>
             {
                 await HandleMessage(jObject);
             });
@@ -292,6 +292,8 @@ namespace MinecraftProximity
             voiceLobby.SendNetworkJson(serverUser, 3, message);
             //transmitsProcessing.TryDequeue(out bool a);
 
+            Program.lobbyManager.FlushNetwork();
+
             await Task.CompletedTask;
             return true;
         }
@@ -345,9 +347,17 @@ namespace MinecraftProximity
 
                         Coords? coords = await coordsReader.GetCoords();
 
-                        instance.nextTasks.Enqueue(async () =>
+                        instance.Queue("Client_SendCoordinates", async () =>
                         {
-                            completionSource.TrySetResult(await SendCoordinates(coords));
+                            bool result = false;
+                            try
+                            {
+                                result = await SendCoordinates(coords);
+                            }
+                            finally
+                            {
+                                completionSource.TrySetResult(result);
+                            }
                         });
                         bool success = await completionSource.Task;
 

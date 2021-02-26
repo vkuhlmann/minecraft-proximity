@@ -31,7 +31,7 @@ namespace MinecraftProximity
             task.Wait();
             Log.Information("[WebUI] Initializing...");
 
-            string libPath = PythonManager.libPath;
+            string libPath = Program.pythonDir.FullName;
             if (libPath == null)
             {
                 //Log.Information("[WebUI] LibPath is null. Cancelling start.");

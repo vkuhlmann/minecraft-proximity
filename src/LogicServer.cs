@@ -109,7 +109,7 @@ namespace MinecraftProximity
 
             cancelTransmitTask = new CancellationTokenSource();
             transmitTask = DoRecalcLoop(cancelTransmitTask.Token);
-            instance.runningTasks.Enqueue((transmitTask, cancelTransmitTask));
+            instance.RegisterRunning("ServerTransmit", transmitTask, cancelTransmitTask);
 
             Log.Information("[Server] Initialization done.");
         }
@@ -486,49 +486,63 @@ namespace MinecraftProximity
                         //Dictionary<long, float> a;
                         //SetUserVolumes(null, a.AsEnumerable().Select(it => (it.Key, it.Value)));
 
-                        instance.nextTasks.Enqueue(async () =>
+                        instance.Queue("Server_TickSend", async () =>
                         {
-                            //stats.Start();
-                            foreach ((long userId, List<(long, float)> li) in ans)
-                                SetUserVolumes(playersMap[userId], li);
+                            bool result = false;
 
-                            frame++;
-                            if (frame % 5 == 1)
+                            try
                             {
-                                JArray playersData = new JArray();
-                                //foreach ((long userId, float volume) in Program.server)
-                                foreach (ServerPlayer pl in playersMap.Values)
+                                //stats.Start();
+                                foreach ((long userId, List<(long, float)> li) in ans)
                                 {
-                                    playersData.Add(JObject.FromObject(new
+                                    if (playersMap.TryGetValue(userId, out ServerPlayer player))
+                                        SetUserVolumes(player, li);
+                                }
+
+                                frame++;
+                                if (frame % 5 == 1)
+                                {
+                                    JArray playersData = new JArray();
+                                    //foreach ((long userId, float volume) in Program.server)
+                                    foreach (ServerPlayer pl in playersMap.Values)
                                     {
-                                        name = pl.playerName,
-                                        x = pl.coords?.x ?? 0.0f,
-                                        y = pl.coords?.y ?? 0.0f,
-                                        z = pl.coords?.z ?? 0.0f
-                                    }));
+                                        playersData.Add(JObject.FromObject(new
+                                        {
+                                            name = pl.playerName,
+                                            x = pl.coords?.x ?? 0.0f,
+                                            y = pl.coords?.y ?? 0.0f,
+                                            z = pl.coords?.z ?? 0.0f
+                                        }));
+                                    }
+
+                                    JObject message = JObject.FromObject(new
+                                    {
+                                        action = "updateplayers",
+                                        data = playersData
+                                    });
+
+                                    foreach (ServerPlayer pl in playersMap.Values)
+                                    {
+                                        voiceLobby.SendNetworkJson(pl.userId, 0, message);
+                                    }
+                                    //Log.Information("Sent player position update");
                                 }
 
-                                JObject message = JObject.FromObject(new
-                                {
-                                    action = "updateplayers",
-                                    data = playersData
-                                });
+                                Program.lobbyManager.FlushNetwork();
 
-                                foreach (ServerPlayer pl in playersMap.Values)
-                                {
-                                    voiceLobby.SendNetworkJson(pl.userId, 0, message);
-                                }
-                                //Log.Information("Sent player position update");
+                                executed++;
+                                result = true;
+                                await Task.CompletedTask;
                             }
-
-                            executed++;
-                            completionSource.TrySetResult(true);
+                            finally
+                            {
+                                completionSource.TrySetResult(result);
+                            }
                             //stats.Stop();
 
                             //transmitsProcessing.Enqueue(true);
                             //Program.nextTasks.Enqueue(async () =>
                             //{
-                            await Task.CompletedTask;
                         });
 
                         await completionSource.Task;

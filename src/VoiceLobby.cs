@@ -25,18 +25,18 @@ namespace MinecraftProximity
 
         public event OnNetworkJson onNetworkJson;
 
-        public Task currentTask;
         public Discord.LobbyManager.ConnectVoiceHandler connVoiceHandler;
         public Instance instance;
+        public bool allowNetwork;
 
-        VoiceLobby(Discord.Lobby lobby, Instance instance)
+        VoiceLobby(Discord.Lobby lobby, Instance instance, bool isCreating)
         {
             this.lobby = lobby;
             this.instance = instance;
             lobbyManager = Program.lobbyManager;
-            currentTask = Task.CompletedTask;
+            allowNetwork = false;
 
-            DoInit();
+            DoInit(isCreating);
             Log.Information("[Party] Lobby setup finished.");
         }
 
@@ -53,7 +53,7 @@ namespace MinecraftProximity
                 if (result == Discord.Result.Ok)
                 {
                     Log.Information($"Connected to lobby {lobby.Id}.");
-                    completionSource.SetResult(new VoiceLobby(lobby, instance));
+                    completionSource.SetResult(new VoiceLobby(lobby, instance, false));
                 }
                 else
                 {
@@ -103,32 +103,106 @@ namespace MinecraftProximity
             Discord.Lobby? lobby = await completionSource.Task;
             if (!lobby.HasValue)
                 return null;
-            return new VoiceLobby(lobby.Value, instance);
+            return new VoiceLobby(lobby.Value, instance, true);
         }
 
-        public async Task Disconnect()
+        async Task DisconnectVoice()
         {
-            Log.Information("[Party] Disconnecting from lobby {LobbyId}.", lobby.Id);
-            await Task.Delay(500);
-
-            Task a = currentTask.ContinueWith((prev) =>
+            TaskCompletionSource<bool> completionSource = new TaskCompletionSource<bool>();
+            //instance.Queue("DisconnectVoice", async () =>
+            //    {
+            lobbyManager.DisconnectVoice(lobby.Id, (Discord.Result result) =>
             {
-                instance.nextTasks.Enqueue(async () =>
+                bool isSuccess = false;
+                try
                 {
-                    TaskCompletionSource<bool> completionSource = new TaskCompletionSource<bool>();
-                    lobbyManager.DisconnectLobby(lobby.Id, (Discord.Result result) =>
-                    {
-                        completionSource.TrySetResult(result == Discord.Result.Ok);
-                    });
-                    await completionSource.Task;
-                });
+                    if (result == Discord.Result.Ok)
+                        Log.Information("[Party] Voice chat is now disconnected.");
+                    else
+                        Log.Warning("[Party] Failed to disconnect voice: {Result}.", result);
+                    isSuccess = result == Discord.Result.Ok;
+                }
+                finally
+                {
+                    completionSource.TrySetResult(isSuccess);
+                }
+            });
+            await completionSource.Task;
+            //});
+        }
+
+        async Task DisconnectNetwork()
+        {
+            if (!allowNetwork)
+                return;
+            allowNetwork = false;
+
+            TaskCompletionSource<bool> completionSource = new TaskCompletionSource<bool>();
+            //instance.Queue("DisconnectNetwork", async () =>
+            //   {
+            //bool result = false;
+            //try
+            //{
+            Program.lobbyManager.FlushNetwork();
+
+            await Task.Delay(50);
+
+            instance.Queue("RequestNetworkDisconnect", async () =>
+            {
+                lobbyManager.DisconnectNetwork(lobby.Id);
+                Log.Information("[Party] DisconnectNetwork requested.");
+                await Task.CompletedTask;
             });
 
-            currentTask = a;
-            await a;
+            //result = true;
+            //}
+            //finally
+            //{
+            //    completionSource.TrySetResult(result);
+            //}
+            //   });
+            //await completionSource.Task;
         }
 
-        void DoInit()
+        public async Task StartDisconnect()
+        {
+            Log.Information("[Party] Disconnecting from lobby {LobbyId}...", lobby.Id);
+            await Task.Delay(20);
+
+            TaskCompletionSource<bool> completionSource = new TaskCompletionSource<bool>();
+
+            //instance.Queue("Party_Disconnect", async () =>
+            //    {
+            await DisconnectVoice();
+            await DisconnectNetwork();
+
+            instance.Queue("DisconnectLobby", async () =>
+            {
+                lobbyManager.DisconnectLobby(lobby.Id, (Discord.Result result) =>
+                {
+                    bool isSuccess = false;
+                    try
+                    {
+                        if (result != Discord.Result.Ok)
+                            Log.Warning("[Party] Didn't receive Ok trying to disconnect from lobby. Result was {Result}.", result);
+                        else
+                            isSuccess = true;
+                        completionSource.TrySetResult(isSuccess);
+                    }
+                    catch (Exception ex)
+                    {
+                        completionSource.SetException(ex);
+                    }
+                });
+                //await completionSource.Task;
+                //    });
+
+                if (await completionSource.Task)
+                    Log.Information("[Party] Disconnected from lobby {LobbyId}.", lobby.Id);
+            });
+        }
+
+        void DoInit(bool isCreating)
         {
             connVoiceHandler = (res) =>
             {
@@ -156,6 +230,7 @@ namespace MinecraftProximity
             // Channel 3: unreliable send/receive to server
             lobbyManager.OpenNetworkChannel(lobby.Id, 3, false);
 
+            allowNetwork = true;
 
             lobbyManager.OnLobbyMessage += (lobbyID, userID, data) =>
             {
@@ -205,7 +280,7 @@ namespace MinecraftProximity
 
         private void HandleOnMemberConnect(long lobbyId, long userId)
         {
-            instance.nextTasks.Enqueue(async () =>
+            instance.Queue("Party_OnUserConnect", async () =>
             {
                 UserResult user = await UserResult.GetUser(userId);
                 if (user.result == Discord.Result.Ok)
@@ -219,7 +294,7 @@ namespace MinecraftProximity
 
         private void HandleOnMemberDisconnect(long lobbyId, long userId)
         {
-            instance.nextTasks.Enqueue(async () =>
+            instance.Queue("Party_OnUserDisconnect", async () =>
             {
                 UserResult user = await UserResult.GetUser(userId);
                 if (user.result == Discord.Result.Ok)
@@ -266,6 +341,12 @@ namespace MinecraftProximity
 
         public async void SendNetworkJson(long recipient, byte channel, JObject jObject)
         {
+            if (!allowNetwork)
+            {
+                Log.Warning("[Party] Warning: Stopped sending of message because of disconnected network.");
+                return;
+            }
+
             if (recipient == Program.currentUserId)
             {
                 onNetworkJson?.Invoke(Program.currentUserId, channel, (JObject)jObject.DeepClone());
@@ -314,11 +395,20 @@ namespace MinecraftProximity
 
                 Program.discord.GetUserManager().GetUser(id, (Discord.Result result, ref Discord.User user) =>
                 {
-                    completionSource.TrySetResult(new UserResult(result, user));
+                    try
+                    {
+                        completionSource.TrySetResult(new UserResult(result, user));
+                    }
+                    catch (Exception ex)
+                    {
+                        completionSource.TrySetException(ex);
+                    }
                 });
-                UserResult userResult = await completionSource.Task;
+                return await completionSource.Task;
 
-                return await Task.FromResult(userResult);
+                //UserResult userResult = await completionSource.Task;
+
+                //return await Task.FromResult(userResult);
             }
         }
 
@@ -337,7 +427,7 @@ namespace MinecraftProximity
             memberTransaction.SetMetadata("isDead", $"{isDead}");
             lobbyManager.UpdateMember(lobby.Id, playerId, memberTransaction, (result) =>
             {
-                instance.nextTasks.Enqueue(async () =>
+                instance.Queue("Party_UpdateIsDead", async () =>
                 {
                     string playerName = await GetFriendlyUsername(playerId);
                     Log.Information($"Set {playerId} dead status to ${isDead}.");

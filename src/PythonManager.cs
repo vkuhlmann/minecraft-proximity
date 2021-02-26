@@ -14,7 +14,7 @@ namespace MinecraftProximity
     {
         public static Task pythonSetupTask;
         public static dynamic screeninfo;
-        public static string libPath;
+        //public static string libPath;
 
         public static async Task<Rectangle[]> GetScreenRects()
         {
@@ -43,7 +43,7 @@ namespace MinecraftProximity
 
         public static async Task SetupPython()
         {
-            string libPath = Program.pythonDir.FullName;
+            //string libPath = Program.pythonDir.FullName;
 
             Log.Information("[Python] Setting up...");
             await Installer.SetupPython();
@@ -75,7 +75,7 @@ namespace MinecraftProximity
             {
                 dynamic sys = PythonEngine.ImportModule("sys");
                 Log.Information("[Python] Setup done. Version: " + sys.version);
-                sys.path.append(libPath);
+                sys.path.append(Program.pythonDir.FullName);
                 //Console.WriteLine($"Sys.path: {sys.path}");
             }
             PythonEngine.BeginAllowThreads();

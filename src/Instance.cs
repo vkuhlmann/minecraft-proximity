@@ -11,7 +11,7 @@ namespace MinecraftProximity
     public class Instance
     {
         bool isShutdownRequested;
-        public ConcurrentQueue<Func<Task>> nextTasks;
+        public ConcurrentQueue<(string name, Func<Task>)> nextTasks;
         public long currentUserId;
         public LogicClient client;
         public LogicServer server;
@@ -20,10 +20,12 @@ namespace MinecraftProximity
 
         public VoiceLobby currentLobby;
 
-        public ConcurrentQueue<(Task, CancellationTokenSource)> runningTasks;
+        public ConcurrentQueue<(string name, Task task, CancellationTokenSource cts)> runningTasks;
 
         public async Task createLobbyIfNone()
         {
+            if (isShutdownRequested)
+                return;
             if (!createLobby || currentLobby != null)
             {
                 Log.Information("Not creating lobby: already exists.");
@@ -47,15 +49,15 @@ namespace MinecraftProximity
             isShutdownRequested = true;
         }
 
-        public bool TryJoinLobby(string secret)
+        public bool TryQueueJoinLobby(string secret)
         {
             createLobby = false;
-            if (currentLobby != null)
+            if (currentLobby != null || isShutdownRequested)
                 return false;
 
             var lobbyManager = Program.lobbyManager;
 
-            nextTasks.Enqueue(async () =>
+            Queue("JoinLobby", async () =>
             {
                 currentLobby = await VoiceLobby.FromSecret(secret, this);
 
@@ -66,11 +68,24 @@ namespace MinecraftProximity
             return true;
         }
 
+
+        public void Queue(string name, Func<Task> task)
+        {
+            nextTasks.Enqueue((name, task));
+        }
+
+        //public async Task Execute(string name, bool pass, Func<Task> task)
+
+        public void RegisterRunning(string name, Task task, CancellationTokenSource cts)
+        {
+            runningTasks.Enqueue((name, task, cts));
+        }
+
         public async Task Run(string activitySecret)
         {
             createLobby = true;
             isShutdownRequested = false;
-            nextTasks = new ConcurrentQueue<Func<Task>>();
+            nextTasks = new ConcurrentQueue<(string, Func<Task>)>();
             client = null;
             server = null;
             webUI = null;
@@ -78,16 +93,14 @@ namespace MinecraftProximity
             var activityManager = Program.discord.GetActivityManager();
             var lobbyManager = Program.discord.GetLobbyManager();
 
-            runningTasks = new ConcurrentQueue<(Task, CancellationTokenSource)>();
+            runningTasks = new ConcurrentQueue<(string, Task, CancellationTokenSource)>();
 
-            List<(int, Func<Task>)> scheduledTasks = new List<(int, Func<Task>)>
+            List<(string name, int frame, Func<Task> start)> scheduledTasks = new List<(string, int, Func<Task>)>
             {
-                (180,
-                async () =>
+                ("CreateLobbyIfNone", 180, async () =>
                 {
                     await createLobbyIfNone();
-                }
-                )
+                })
             };
 
             CancellationTokenSource cancelPrintCoordsSource = new CancellationTokenSource();
@@ -99,7 +112,7 @@ namespace MinecraftProximity
             //    printLoop,
             //    execLoop
             //};
-            runningTasks.Enqueue((printLoop, cancelPrintCoordsSource));
+            runningTasks.Enqueue(("PrintCoordinatesLoop", printLoop, cancelPrintCoordsSource));
             //runningTasks.Enqueue((execLoop, cancelExecLoopSource));
 
             Task delayingTask = Task.CompletedTask;
@@ -121,25 +134,26 @@ namespace MinecraftProximity
             int frame = 0;
 
             if (activitySecret != null)
-                TryJoinLobby(activitySecret);
-
-            if (currentLobby == null)
+                TryQueueJoinLobby(activitySecret);
+            else if (currentLobby == null)
                 Log.Information("Waiting about 3 seconds before creating lobby, in case of a Join event.");
 
-            while (!isShutdownRequested || runningTasks.Count > 0)
+            bool isShuttingDown = false;
+
+            while (!isShuttingDown || runningTasks.Count > 0 || nextTasks.Count > 0)
             {
                 //profiler.Start();
                 frame += 1;
                 int i = 0;
                 while (i < scheduledTasks.Count)
                 {
-                    if (scheduledTasks[i].Item1 > 0)
+                    if (scheduledTasks[i].frame > 0)
                     {
                         i++;
                         continue;
                     }
 
-                    nextTasks.Enqueue(scheduledTasks[i].Item2);
+                    nextTasks.Enqueue((scheduledTasks[0].name, scheduledTasks[i].start));
 
                     scheduledTasks.RemoveAt(i);
                 }
@@ -153,34 +167,39 @@ namespace MinecraftProximity
                     errorBunchEnd = Environment.TickCount64 + errorBunchDur;
                 }
 
-                int cycleAround = runningTasks.Count;
-                for (i = 0; i < cycleAround; i++)
+                //int cycleAround = runningTasks.Count;
+                runningTasks.Enqueue(("CycleAround", null, null));
+
+                //for (i = 0; i < cycleAround; i++)
+                while (true)
                 {
-                    (Task, CancellationTokenSource) res;
-                    if (!runningTasks.TryDequeue(out res))
+                    (string name, Task task, CancellationTokenSource cts) res;
+                    if (!runningTasks.TryDequeue(out res) || res.name == "CycleAround")
                         break;
-                    (Task t, CancellationTokenSource cancToken) = res;
+                    //(Task t, CancellationTokenSource cancToken) = res;
+                    (string name, Task task, CancellationTokenSource cts) = res;
 
                     //Task t = runningTasks[i];
-                    if (!t.IsCompleted)
+                    if (!task.IsCompleted)
                     {
-                        if (isShutdownRequested && cancToken != null)
+                        if (isShutdownRequested && cts != null)
                         {
-                            cancToken.Cancel();
-                            runningTasks.Enqueue((t, null));
+                            Log.Information("Cancelling Task {Name}.", name);
+                            cts.Cancel();
+                            runningTasks.Enqueue((name, task, null));
                         }
                         else
                         {
-                            runningTasks.Enqueue((t, cancToken));
+                            runningTasks.Enqueue(res);
                         }
                         continue;
                     }
-                    TaskStatus st = t.Status;
+                    TaskStatus st = task.Status;
                     try
                     {
                         try
                         {
-                            await t;
+                            await task;
                         }
                         catch (AggregateException ex)
                         {
@@ -195,7 +214,7 @@ namespace MinecraftProximity
                     {
                         if (++errorBunchCount <= errorBunchMax)
                         {
-                            Log.Warning("Task ended with error: {Msg}\n{StackTrace}", ex.Message, ex.StackTrace);
+                            Log.Warning("Task {Name} ended with error: {Msg}\n{StackTrace}", name, ex.Message, ex.StackTrace);
                         }
                         else if (errorBunchCount == errorBunchMax + 1)
                         {
@@ -210,32 +229,49 @@ namespace MinecraftProximity
                     if (profiler.IsRunning())
                         profiler.Stop();
 
-                    if (nextTasks.TryDequeue(out Func<Task> b))
+                    (string name, Func<Task> b) nt;
+                    if (nextTasks.TryDequeue(out nt))
                     {
-                        Task c = b();
+                        Task c = nt.b();
                         delayingTask = c;
-                        runningTasks.Enqueue((c, null));
+                        runningTasks.Enqueue((nt.name, c, null));
                         profiler.Start();
+                    }
+                    else if (isShutdownRequested && !isShuttingDown)
+                    {
+                        isShuttingDown = true;
+                        Log.Information("[Party] Shutting down...");
+
+                        async Task termFunc()
+                        {
+                            webUI?.Stop();
+                            server?.Stop();
+                            client?.Stop();
+
+                            VoiceLobby l = currentLobby;
+                            if (l != null)
+                                await l.StartDisconnect();
+                            //await currentLobby?.StartDisconnect();
+                        }
+
+                        Task t = termFunc();
+
+                        RegisterRunning("InstanceCleanup", t, null);
                     }
                 }
 
                 Program.discord.RunCallbacks();
-                lobbyManager.FlushNetwork();
+                //lobbyManager.FlushNetwork();
 
                 //profiler.Stop();
 
                 for (i = 0; i < scheduledTasks.Count; i++)
-                    scheduledTasks[i] = (scheduledTasks[i].Item1 - 1, scheduledTasks[i].Item2);
+                    scheduledTasks[i] = (scheduledTasks[i].name, scheduledTasks[i].frame - 1, scheduledTasks[i].start);
 
                 if (nextTasks.Count == 0 && delayingTask.IsCompleted)
                     await Task.Delay(1000 / 100);
             }
-
-            webUI?.Stop();
-            server?.Stop();
-            client?.Stop();
-
-            await currentLobby?.Disconnect();
+            Log.Information("[Party] Shut down.");
         }
 
         public void DoHost()
@@ -251,12 +287,19 @@ namespace MinecraftProximity
             {
                 tok.ThrowIfCancellationRequested();
                 TaskCompletionSource<bool> cs = new TaskCompletionSource<bool>();
-                nextTasks.Enqueue(async () =>
+                Queue("PrintCoordinates", async () =>
                 {
-                    Coords? a = client?.coords;
-                    Log.Information("[CoordinateReader] Coords are {PrintedCoords}.", a?.ToString() ?? "null");
-
-                    cs.TrySetResult(true);
+                    bool result = false;
+                    try
+                    {
+                        Coords? a = client?.coords;
+                        Log.Information("[CoordinateReader] Coords are {PrintedCoords}.", a?.ToString() ?? "null");
+                        result = true;
+                    }
+                    finally
+                    {
+                        cs.TrySetResult(result);
+                    }
                     await Task.CompletedTask;
                 });
                 await cs.Task;

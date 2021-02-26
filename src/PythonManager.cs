@@ -43,21 +43,7 @@ namespace MinecraftProximity
 
         public static async Task SetupPython()
         {
-            //string libPath = @"D:\Projects\minecraft-proximity";
-            DirectoryInfo assemblyDir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);
-            DirectoryInfo dir = assemblyDir;
-            while (dir != null)
-            {
-                if (File.Exists(Path.Combine(dir.FullName, "logicserver.py")))
-                    break;
-                dir = dir.Parent;
-            }
-
-            //string libPath;
-            if (dir != null)
-                libPath = dir.FullName;
-            else
-                libPath = assemblyDir.FullName;
+            string libPath = Program.pythonDir.FullName;
 
             Log.Information("[Python] Setting up...");
             await Installer.SetupPython();

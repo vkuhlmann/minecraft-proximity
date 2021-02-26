@@ -23,9 +23,18 @@ namespace MinecraftProximity
 
         public ConfigFile(string path = "config.json")
         {
-            DirectoryInfo dir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);
-            if (dir.Name == "bin")
-                dir = dir.Parent;
+            DirectoryInfo dir;
+            if (Program.exeFile != null)
+            {
+                dir = Directory.GetParent(Program.exeFile);
+            }
+            else
+            {
+                dir = Program.assemblyDir;
+                if (dir.Name == "bin")
+                    dir = dir.Parent;
+            }
+
             Path = System.IO.Path.Combine(dir.FullName, path);
             Reload();
         }
@@ -36,7 +45,8 @@ namespace MinecraftProximity
             {
                 string configFileContent = File.ReadAllText(Path);
                 Json = JObject.Parse(configFileContent);
-            } else
+            }
+            else
             {
                 Json = JObject.FromObject(new
                 {

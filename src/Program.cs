@@ -32,11 +32,49 @@ namespace MinecraftProximity
         public static ConfigFile configFile;
 
         public static Instance instance;
+        //public static DirectoryInfo exeRoot;
+        public static DirectoryInfo assemblyDir;
+        public static string exeFile;
+        public static DirectoryInfo pythonDir;
+
+        static string locateExeFile()
+        {
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                return null;
+
+            DirectoryInfo dir = assemblyDir;
+            while (dir != null)
+            {
+                string path = Path.Combine(dir.FullName, "MinecraftProximity.exe");
+                if (File.Exists(path))
+                    return path;
+                dir = dir.Parent;
+            }
+            return null;
+        }
+
+        static DirectoryInfo locatePythonDir()
+        {
+            DirectoryInfo dir = assemblyDir;
+            while (dir != null)
+            {
+                string path = Path.Combine(dir.FullName, "logicserver.py");
+                if (File.Exists(path))
+                    return dir;
+                dir = dir.Parent;
+            }
+            return assemblyDir;
+        }
 
         static async Task RunAsync(string[] args)
         {
-            Console.Title = "Proximity chat for Minecraft Beta 1.0.1";
+            Console.Title = "Minecraft Proximity - Version 1.0.0-beta.4";
             instance = null;
+
+            assemblyDir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);
+
+            exeFile = locateExeFile();
+            pythonDir = locatePythonDir();
 
             configFile = new ConfigFile("config.json");
 
@@ -129,13 +167,20 @@ namespace MinecraftProximity
                     Log.Information("The invite can be accepted from within Discord.");
                 };
 
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                {
-                    string path = System.Reflection.Assembly.GetEntryAssembly().Location;
-                    path = Path.Combine(Directory.GetParent(path).FullName, "MinecraftProximity.exe");
+                //if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                //{
+                //    string path = System.Reflection.Assembly.GetEntryAssembly().Location;
+                //    path = Path.Combine(Directory.GetParent(path).FullName, "MinecraftProximity.exe");
 
-                    string launchCommand = $"\"{path}\"";
-                    Log.Verbose("Registering launchCommand: {LaunchCommand}", launchCommand);
+                //    string launchCommand = $"\"{path}\"";
+                //    Log.Information("Registering launchCommand: {LaunchCommand}", launchCommand);
+                //    activityManager.RegisterCommand(launchCommand);
+                //}
+
+                if (exeFile != null)
+                {
+                    string launchCommand = $"\"{exeFile}\"";
+                    Log.Information("Registering launchCommand: {LaunchCommand}", launchCommand);
                     activityManager.RegisterCommand(launchCommand);
                 }
 

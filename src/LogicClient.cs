@@ -16,6 +16,7 @@ namespace MinecraftProximity
         public long userId;
         public string playerName;
         public float volume;
+        public byte byteVolume;
 
         public Player(long userId, string playerName, float volume = 1.0f)
         {
@@ -26,9 +27,13 @@ namespace MinecraftProximity
 
         public void SetLocalVolume(float volume = 1.0f)
         {
+            byte byteVolume = (byte)(volume * 100.0f);
+            if (byteVolume == this.byteVolume)
+                return;
             Discord.VoiceManager voiceManager = Program.discord.GetVoiceManager();
-            voiceManager.SetLocalVolume(userId, (byte)(volume * 100));
+            voiceManager.SetLocalVolume(userId, byteVolume);
             this.volume = volume;
+            this.byteVolume = byteVolume;
         }
     }
 
@@ -199,8 +204,7 @@ namespace MinecraftProximity
 
                     if (players.TryGetValue(userId, out Player pl))
                     {
-                        if (Math.Abs(volume - pl.volume) > 0.05f)
-                            pl.SetLocalVolume(volume);
+                        pl.SetLocalVolume(volume);
                     }
                 }
             }

@@ -138,18 +138,26 @@ namespace MinecraftProximity
         static LegalFile? LocateTerms()
         {
             //DirectoryInfo dir = new DirectoryInfo(Directory.GetCurrentDirectory());
-            DirectoryInfo dir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);
+            //DirectoryInfo dir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);
 
-            string filePath = null;
-            while (dir != null)
-            {
-                filePath = Path.Combine(dir.FullName, "LICENSES.txt");
-                if (File.Exists(filePath))
-                    break;
-                dir = dir.Parent;
-            }
-            if (dir == null)
+            //string filePath = null;
+            //while (dir != null)
+            //{
+            //    filePath = Path.Combine(dir.FullName, "LICENSES.txt");
+            //    if (File.Exists(filePath))
+            //        break;
+            //    dir = dir.Parent;
+            //}
+            //if (dir == null)
+            //    return null;
+
+            if (Program.pythonDir == null)
                 return null;
+
+            string filePath = Path.Combine(Program.pythonDir.FullName, "LICENSES.txt");
+            if (!File.Exists(filePath))
+                return null;
+
 
             string[] lead = File.ReadLines(filePath).Take(3).ToArray();
             Match m = Regex.Match(lead[0], "% minecraft-proximity terms");
@@ -177,19 +185,26 @@ namespace MinecraftProximity
 
         static LegalFile? LocatePrivacyPolicy()
         {
-            //DirectoryInfo dir = new DirectoryInfo(Directory.GetCurrentDirectory());
-            DirectoryInfo dir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);
+            //DirectoryInfo dir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);
 
-            string filePath = null;
-            while (dir != null)
-            {
-                filePath = Path.Combine(dir.FullName, "privacyPolicy.txt");
-                if (File.Exists(filePath))
-                    break;
-                dir = dir.Parent;
-            }
-            if (dir == null)
+            //string filePath = null;
+            //while (dir != null)
+            //{
+            //    filePath = Path.Combine(dir.FullName, "privacyPolicy.txt");
+            //    if (File.Exists(filePath))
+            //        break;
+            //    dir = dir.Parent;
+            //}
+            //if (dir == null)
+            //    return null;
+
+            if (Program.pythonDir == null)
                 return null;
+
+            string filePath = Path.Combine(Program.pythonDir.FullName, "privacyPolicy.txt");
+            if (!File.Exists(filePath))
+                return null;
+
 
             string[] lead = File.ReadLines(filePath).Take(3).ToArray();
             Match m = Regex.Match(lead[0], "% minecraft-proximity privacy policy");

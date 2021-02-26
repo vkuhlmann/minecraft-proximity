@@ -35,7 +35,7 @@ class Obscuration:
             lowRay = highRay
             highRay = swap
 
-        if highRay[2] < self.lowCorner[2] or highRay[2] > self.highCorner[2]:
+        if highRay[2] < self.lowCorner[2] or lowRay[2] > self.highCorner[2]:
             return 1.0
 
         if lowRay[2] < self.lowCorner[2]:
@@ -47,7 +47,9 @@ class Obscuration:
 
         highRay[1] = lowRay[1]
         dist = np.linalg.norm(highRay - lowRay)
-        return np.exp(np.log(self.transmissionCoeff) * dist)
+        factor = np.exp(np.log(self.transmissionCoeff) * dist)
+        #print(factor)
+        return factor
 
 # def generateObscurations(l, dens):
 #     l.clear()
@@ -119,8 +121,10 @@ class LogicServer:
                     np.array([x + 1, 255, y + 1]),
                     transmissionCoeff=coeff
                 ))
-        #print(f"Obscurations is {self.obscurations}")
         print(f"Updated obscurations")
+
+        for obsc in self.obscurations:
+            print(f"{obsc.lowCorner}, {obsc.highCorner}, {obsc.transmissionCoeff}")
 
     def create_player(self, di):
         #return LogicServer.PlayerFromDict(di)
@@ -211,7 +215,9 @@ class LogicServer:
         halvingDistance = 10
 
         factor = 1.0
+        #print(f"Obscurations: {len(self.obscurations)}")
         for obsc in self.obscurations:
             factor *= obsc.getFactor(othPos, basePos)
+        #print(f"Factor: {factor}")
 
         return max(1.0 - (dist / halvingDistance)**2 / 2, 0.0) * factor

@@ -68,7 +68,7 @@ namespace MinecraftProximity
 
         static async Task RunAsync(string[] args)
         {
-            Console.Title = "Minecraft Proximity - Version 1.0.0-beta.5";
+            Console.Title = "Minecraft Proximity - Version 1.0.0-beta.6";
             instance = null;
 
             assemblyDir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);

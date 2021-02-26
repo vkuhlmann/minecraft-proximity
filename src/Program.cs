@@ -68,7 +68,7 @@ namespace MinecraftProximity
 
         static async Task RunAsync(string[] args)
         {
-            Console.Title = "Minecraft Proximity - Version 1.0.0-beta.4";
+            Console.Title = "Minecraft Proximity - Version 1.0.0-beta.5";
             instance = null;
 
             assemblyDir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);
@@ -109,6 +109,7 @@ namespace MinecraftProximity
                 return;
             }
             Program.discord = discord;
+
 
             CancellationTokenSource cancelExecLoopSource = new CancellationTokenSource();
             CancellationToken cancelExecLoop = cancelExecLoopSource.Token;
@@ -165,6 +166,66 @@ namespace MinecraftProximity
                 {
                     Log.Information("Received invite from {Username}#{Discriminator} to {Type} {ActivityName}.", user.Username, user.Discriminator, activity2.Type, activity2.Name);
                     Log.Information("The invite can be accepted from within Discord.");
+                };
+
+                //lobbyManager.OnLobbyMessage += (lobbyID, userID, data) =>
+                //{
+                //    if (lobbyID == lobby.Id)
+                //        onLobbyMessage?.Invoke(lobbyID, userID, data);
+                //    //Console.WriteLine("Lobby message: {0} {1}", lobbyID, Encoding.UTF8.GetString(data));
+                //};
+                lobbyManager.OnNetworkMessage += (lobbyId, userId, channelId, data) =>
+                {
+                    //Log.Information("Received message");
+                    //if (lobbyId == lobby.Id)
+                    //    onNetworkMessage?.Invoke(lobbyId, userId, channelId, data);
+                    try
+                    {
+                        instance?.OnNetworkMessage(lobbyId, userId, channelId, data);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error("Error receiving network message: {Message}", ex.Message);
+                    }
+
+                    //Console.WriteLine("Network message: {0} {1} {2} {3}", lobbyId, userId, channelId, Encoding.UTF8.GetString(data));
+                };
+                //lobbyManager.OnSpeaking += (lobbyID, userID, speaking) =>
+                //{
+                //    if (lobbyID == lobby.Id)
+                //        onSpeaking?.Invoke(lobbyID, userID, speaking);
+
+                //    //Console.WriteLine("Lobby speaking: {0} {1} {2}", lobbyID, userID, speaking);
+                //};
+
+                lobbyManager.OnMemberConnect += (lobbyID, userID) =>
+                {
+                    //Console.WriteLine($"Member connected to lobby {lobbyID}: {userID}");
+                    //if (lobbyID == lobby.Id)
+                    //    onMemberConnect?.Invoke(lobbyID, userID);
+                    try
+                    {
+                        instance?.OnMemberConnect(lobbyID, userID);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error("Error receiving member connect: {Message}", ex.Message);
+                    }
+                };
+
+                lobbyManager.OnMemberDisconnect += (lobbyID, userID) =>
+                {
+                    //Console.WriteLine($"Member disconnected from lobby {lobbyID}: {userID}");
+                    //if (lobbyID == lobby.Id)
+                    //    onMemberDisconnect?.Invoke(lobbyID, userID);
+                    try
+                    {
+                        instance?.OnMemberDisconnect(lobbyID, userID);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error("Error receiving member connect: {Message}", ex.Message);
+                    }
                 };
 
                 //if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))

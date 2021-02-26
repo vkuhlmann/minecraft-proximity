@@ -68,6 +68,21 @@ namespace MinecraftProximity
             return true;
         }
 
+        public void OnNetworkMessage(long lobbyId, long userId, byte channelId, byte[] data)
+        {
+            //if (lobbyId == currentLobby?.lobbyId)
+            currentLobby.ReceiveNetworkMessage(lobbyId, userId, channelId, data);
+        }
+
+        public void OnMemberConnect(long lobbyId, long userId)
+        {
+            currentLobby.ReceiveMemberConnect(lobbyId, userId);
+        }
+
+        public void OnMemberDisconnect(long lobbyId, long userId)
+        {
+            currentLobby.ReceiveMemberDisconnect(lobbyId, userId);
+        }
 
         public void Queue(string name, Func<Task> task)
         {
@@ -261,7 +276,7 @@ namespace MinecraftProximity
                 }
 
                 Program.discord.RunCallbacks();
-                //lobbyManager.FlushNetwork();
+                lobbyManager.FlushNetwork();
 
                 //profiler.Stop();
 

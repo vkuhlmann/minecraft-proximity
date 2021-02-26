@@ -528,7 +528,7 @@ namespace MinecraftProximity
                                     //Log.Information("Sent player position update");
                                 }
 
-                                Program.lobbyManager.FlushNetwork();
+                                //Program.lobbyManager.FlushNetwork();
 
                                 executed++;
                                 result = true;

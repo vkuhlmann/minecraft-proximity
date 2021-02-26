@@ -28,13 +28,16 @@ namespace MinecraftProximity
         public Discord.LobbyManager.ConnectVoiceHandler connVoiceHandler;
         public Instance instance;
         public bool allowNetwork;
+        public long lobbyId { get; private set; }
 
         VoiceLobby(Discord.Lobby lobby, Instance instance, bool isCreating)
         {
             this.lobby = lobby;
+            lobbyId = this.lobby.Id;
             this.instance = instance;
             lobbyManager = Program.lobbyManager;
             allowNetwork = false;
+
 
             DoInit(isCreating);
             Log.Information("[Party] Lobby setup finished.");
@@ -106,6 +109,27 @@ namespace MinecraftProximity
             return new VoiceLobby(lobby.Value, instance, true);
         }
 
+        public void ReceiveNetworkMessage(long lobbyId, long userId, byte channelId, byte[] data)
+        {
+            if (lobbyId != this.lobbyId)
+                return;
+            onNetworkMessage?.Invoke(lobbyId, userId, channelId, data);
+        }
+
+        public void ReceiveMemberConnect(long lobbyId, long userId)
+        {
+            if (lobbyId != this.lobbyId)
+                return;
+            onMemberConnect?.Invoke(lobbyId, userId);
+        }
+
+        public void ReceiveMemberDisconnect(long lobbyId, long userId)
+        {
+            if (lobbyId != this.lobbyId)
+                return;
+            onMemberDisconnect?.Invoke(lobbyId, userId);
+        }
+
         async Task DisconnectVoice()
         {
             TaskCompletionSource<bool> completionSource = new TaskCompletionSource<bool>();
@@ -143,7 +167,7 @@ namespace MinecraftProximity
             //bool result = false;
             //try
             //{
-            Program.lobbyManager.FlushNetwork();
+            //Program.lobbyManager.FlushNetwork();
 
             await Task.Delay(50);
 
@@ -232,40 +256,40 @@ namespace MinecraftProximity
 
             allowNetwork = true;
 
-            lobbyManager.OnLobbyMessage += (lobbyID, userID, data) =>
-            {
-                if (lobbyID == lobby.Id)
-                    onLobbyMessage?.Invoke(lobbyID, userID, data);
-                //Console.WriteLine("Lobby message: {0} {1}", lobbyID, Encoding.UTF8.GetString(data));
-            };
-            lobbyManager.OnNetworkMessage += (lobbyId, userId, channelId, data) =>
-            {
-                if (lobbyId == lobby.Id)
-                    onNetworkMessage?.Invoke(lobbyId, userId, channelId, data);
+            //lobbyManager.OnLobbyMessage += (lobbyID, userID, data) =>
+            //{
+            //    if (lobbyID == lobby.Id)
+            //        onLobbyMessage?.Invoke(lobbyID, userID, data);
+            //    //Console.WriteLine("Lobby message: {0} {1}", lobbyID, Encoding.UTF8.GetString(data));
+            //};
+            //lobbyManager.OnNetworkMessage += (lobbyId, userId, channelId, data) =>
+            //{
+            //    if (lobbyId == lobby.Id)
+            //        onNetworkMessage?.Invoke(lobbyId, userId, channelId, data);
 
-                //Console.WriteLine("Network message: {0} {1} {2} {3}", lobbyId, userId, channelId, Encoding.UTF8.GetString(data));
-            };
-            lobbyManager.OnSpeaking += (lobbyID, userID, speaking) =>
-            {
-                if (lobbyID == lobby.Id)
-                    onSpeaking?.Invoke(lobbyID, userID, speaking);
+            //    //Console.WriteLine("Network message: {0} {1} {2} {3}", lobbyId, userId, channelId, Encoding.UTF8.GetString(data));
+            //};
+            ////lobbyManager.OnSpeaking += (lobbyID, userID, speaking) =>
+            ////{
+            ////    if (lobbyID == lobby.Id)
+            ////        onSpeaking?.Invoke(lobbyID, userID, speaking);
 
-                //Console.WriteLine("Lobby speaking: {0} {1} {2}", lobbyID, userID, speaking);
-            };
+            ////    //Console.WriteLine("Lobby speaking: {0} {1} {2}", lobbyID, userID, speaking);
+            ////};
 
-            lobbyManager.OnMemberConnect += (lobbyID, userID) =>
-            {
-                //Console.WriteLine($"Member connected to lobby {lobbyID}: {userID}");
-                if (lobbyID == lobby.Id)
-                    onMemberConnect?.Invoke(lobbyID, userID);
-            };
+            //lobbyManager.OnMemberConnect += (lobbyID, userID) =>
+            //{
+            //    //Console.WriteLine($"Member connected to lobby {lobbyID}: {userID}");
+            //    if (lobbyID == lobby.Id)
+            //        onMemberConnect?.Invoke(lobbyID, userID);
+            //};
 
-            lobbyManager.OnMemberDisconnect += (lobbyID, userID) =>
-            {
-                //Console.WriteLine($"Member disconnected from lobby {lobbyID}: {userID}");
-                if (lobbyID == lobby.Id)
-                    onMemberDisconnect?.Invoke(lobbyID, userID);
-            };
+            //lobbyManager.OnMemberDisconnect += (lobbyID, userID) =>
+            //{
+            //    //Console.WriteLine($"Member disconnected from lobby {lobbyID}: {userID}");
+            //    if (lobbyID == lobby.Id)
+            //        onMemberDisconnect?.Invoke(lobbyID, userID);
+            //};
 
             onMemberConnect += HandleOnMemberConnect;
             onMemberDisconnect += HandleOnMemberDisconnect;
@@ -339,7 +363,7 @@ namespace MinecraftProximity
             }
         }
 
-        public async void SendNetworkJson(long recipient, byte channel, JObject jObject)
+        public void SendNetworkJson(long recipient, byte channel, JObject jObject)
         {
             if (!allowNetwork)
             {
@@ -355,7 +379,6 @@ namespace MinecraftProximity
 
             lobbyManager.SendNetworkMessage(lobby.Id, recipient, channel,
                 Encoding.UTF8.GetBytes(jObject.ToString(Formatting.Indented)));
-            await Task.CompletedTask;
         }
 
         public void PrintMetadata()

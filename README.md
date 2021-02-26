@@ -6,7 +6,7 @@ Then, it uses the Discord Game API to set the volumes of you and your party. And
 
 My one-take demo (not great, but for now sufficient I'd say): https://youtu.be/kvT7hmtxVss
 
-_The project is still early in its development. Please contact me if you want to help test it._
+_The project is still early in its development. Please contact me if you want to try it out._
 
 ***
 
@@ -31,7 +31,7 @@ dotnet publish -r win-x64 -c Release -p:PublishTrimmed=true
 
 4. Open the `publish` directory mentioned by the command output.
 5. The directory is flooded with DLL's. You could use it like this...
-6. ... or, what I did: I used the trick of [dnSpy's AppHostPatcher](https://github.com/dnSpy/dnSpy/blob/master/Build/AppHostPatcher/Program.cs). Compile it. Navigate your terminal to the `publish` directory, and execute
+6. ... or, what I did: I used the trick of [dnSpy's AppHostPatcher](https://github.com/dnSpy/dnSpy/blob/master/Build/AppHostPatcher/Program.cs). Compile it. Navigate your terminal to the `publish/` directory, and execute
 ```
 "D:\path\to\apphostpatcher\apphostpatcher.exe" MinecraftProximity.exe -d bin
 ```

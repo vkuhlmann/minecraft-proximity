@@ -272,6 +272,7 @@ namespace MinecraftProximity
                     await Task.Delay(1000 / 100);
             }
             Log.Information("[Party] Shut down.");
+            Console.WriteLine();
         }
 
         public void DoHost()

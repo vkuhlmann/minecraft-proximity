@@ -20,15 +20,21 @@ namespace MinecraftProximity
     public class ServerPlayer
     {
         public long userId;
-        public string playerName;
+        public string discordUsername;
+        public string discordDiscriminator;
+        public string displayName;
+
         public Coords? coords;
 
         public dynamic pythonPlayer;
 
-        public ServerPlayer(long userId, string playerName)
+        public ServerPlayer(long userId, string discordUsername, string discordDiscriminator)
         {
             this.userId = userId;
-            this.playerName = playerName;
+            this.discordUsername = discordUsername;
+            this.discordDiscriminator = discordDiscriminator;
+            this.displayName = discordUsername;
+
             coords = null;
             pythonPlayer = null;
         }
@@ -37,20 +43,25 @@ namespace MinecraftProximity
     public class LogicServer
     {
         Dictionary<long, ServerPlayer> playersMap;
-        ConcurrentQueue<List<ServerPlayer>> playersStores;
 
-        ConcurrentQueue<VolumesMatrix> volumesStores;
+        readonly ConcurrentQueue<List<ServerPlayer>> playersStores;
+        readonly ConcurrentQueue<VolumesMatrix> volumesStores;
 
-        PyScope scope;
-        dynamic logicServerPy;
-        VoiceLobby voiceLobby;
-        Task transmitTask;
-        CancellationTokenSource cancelTransmitTask;
-        ConcurrentQueue<bool> transmitsProcessing;
+        readonly PyScope scope;
+        readonly dynamic logicServerPy;
+        readonly dynamic jsonModule;
 
-        RepeatProfiler calculateVolumesProfiler;
+        readonly VoiceLobby voiceLobby;
+        readonly Task transmitTask;
+        readonly CancellationTokenSource cancelTransmitTask;
+        readonly ConcurrentQueue<bool> transmitsProcessing;
+
+        readonly RepeatProfiler calculateVolumesProfiler;
         bool isSettingMap;
-        Instance instance;
+        readonly Instance instance;
+        delegate void DelegateSendMessageHandler(long recipient, dynamic msg);
+
+        DelegateSendMessageHandler sendMessageHandler;
 
         public LogicServer(VoiceLobby voiceLobby, Instance instance)
         {
@@ -70,8 +81,8 @@ namespace MinecraftProximity
                     Log.Information("[Server] Calculate volumes takes {DurMs:F2} ms on average ({Req} requests completed)", result.durMs, result.handledCount);
                 });
 
-            this.voiceLobby.onMemberConnect += VoiceLobby_onMemberConnect;
-            this.voiceLobby.onMemberDisconnect += VoiceLobby_onMemberDisconnect;
+            sendMessageHandler = SendMessageHandler;
+            //(long recipient, dynamic msg) => this.SendMessageHandler(recipient, msg);
 
             Task task = PythonManager.pythonSetupTask;
             task.Wait();
@@ -82,28 +93,31 @@ namespace MinecraftProximity
                 try
                 {
                     scope = Py.CreateScope();
-                    IEnumerable<string> imports = new List<string> { "sys", "numpy", "logicserver" };
+                    IEnumerable<string> imports = new List<string> { "json", "logicserver" };
                     Dictionary<string, dynamic> modules = new Dictionary<string, dynamic>();
 
                     foreach (string import in imports)
-                    {
                         modules[import] = scope.Import(import);
-                        //Console.WriteLine($"Imported {import}");
-                    }
+
+                    jsonModule = modules["json"];
 
                     dynamic mod = modules["logicserver"];
-                    //dynamic inst = mod.LogicServer.Create();
-                    dynamic inst = mod.create_server();
-                    logicServerPy = inst;
+                    logicServerPy = mod.create_server(sendMessageHandler);
                 }
                 catch (Exception ex)
                 {
                     exception = ex;
-                    Log.Error("Error initializing Python code for LogicServer: {Ex}", ex);
+                    Log.Error("[Server] Error initializing Python code: {Ex}", ex);
                 }
             }
             if (exception != null)
                 throw exception;
+
+            this.voiceLobby.onMemberConnect += VoiceLobby_onMemberConnect;
+            this.voiceLobby.onMemberDisconnect += VoiceLobby_onMemberDisconnect;
+
+            foreach (Discord.User user in this.voiceLobby.GetMembers())
+                OnUserJoin(user.Id);
 
             voiceLobby.onNetworkJson += VoiceLobby_onNetworkJson;
 
@@ -112,6 +126,11 @@ namespace MinecraftProximity
             instance.RegisterRunning("ServerTransmit", transmitTask, cancelTransmitTask);
 
             Log.Information("[Server] Initialization done.");
+        }
+
+        public void SendMessageHandler(long recipient, dynamic msg)
+        {
+            voiceLobby.SendNetworkJson(recipient, 0, JObject.Parse(jsonModule.dumps(msg)));
         }
 
         public void Stop()
@@ -136,7 +155,7 @@ namespace MinecraftProximity
                 catch (TaskCanceledException) { }
                 catch (Exception ex)
                 {
-                    Log.Error("Transmit task encountered error: {Message}", ex.Message);
+                    Log.Error("[Server] Transmit task encountered error: {Message}", ex.Message);
                 }
             }
 
@@ -149,49 +168,106 @@ namespace MinecraftProximity
             }
             catch (Exception ex)
             {
-                Log.Error("Python raised an error trying to do Shutdown: {Message}", ex.Message);
+                Log.Error("[Server] Python raised an error trying to do Shutdown: {Message}", ex.Message);
             }
         }
 
         public bool HandleCommand(string cmdName, string args)
         {
-            try
+            using (Py.GIL())
             {
-                using (Py.GIL())
+                try
                 {
                     if (logicServerPy == null)
                         return false;
-                    return logicServerPy.handle_command(cmdName, args);
+                    dynamic ans = logicServerPy.handle_command(cmdName, args);
+                    if (ans == false)
+                        return false;
+
+                    if (PyString.IsStringType(ans))
+                        Console.WriteLine((string)ans);
+                    return true;
                 }
-            }
-            catch (Exception ex)
-            {
-                Log.Error("Python raised an error trying to do HandleCommand: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
-                return false;
+                catch (Exception ex)
+                {
+                    Log.Error("[Server] Python raised an error during handle_command: {Message}\n{StackTrace}", ex.Message, ex.StackTrace);
+                    return false;
+                }
             }
         }
 
         private void VoiceLobby_onMemberDisconnect(long lobbyId, long userId)
         {
-            RefreshPlayers();
+            OnUserLeave(userId);
+        }
 
-            //Program.nextTasks.Enqueue(async () =>
-            //{
+        private void OnUserLeave(long userId)
+        {
+            if (!playersMap.TryGetValue(userId, out ServerPlayer pl))
+                return;
 
-            //});
+            using (Py.GIL())
+            {
+                try
+                {
+                    logicServerPy.on_leave(pl.pythonPlayer);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning("[Server] Python raised an error during on_leave: {Message}", ex.Message);
+                }
+            }
+
+            playersMap.Remove(userId);
         }
 
         private void VoiceLobby_onMemberConnect(long lobbyId, long userId)
         {
-            //RefreshPlayers();
+            OnUserJoin(userId);
+        }
+
+        private void OnUserJoin(long userId)
+        {
             AdvertiseHost();
+
+            Discord.User? userNullable = voiceLobby.GetMember(userId);
+            if (!userNullable.HasValue)
+                return;
+            Discord.User user = userNullable.Value;
+
+            ServerPlayer pl = new ServerPlayer(userId, user.Username, user.Discriminator);
+            playersMap[userId] = pl;
+
+            using (Py.GIL())
+            {
+                try
+                {
+                    PyDict dict = new PyDict();
+                    dict["pos"] = PyObject.FromManagedObject(null);
+
+                    dict["userId"] = new PyInt(userId);
+                    dict["discordUsername"] = new PyString(pl.discordUsername);
+                    dict["discordDiscriminator"] = new PyString(pl.discordDiscriminator);
+                    dict["displayName"] = new PyString(pl.displayName);
+
+                    dynamic player = logicServerPy.on_join(dict);
+                    pl.pythonPlayer = player;
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning("[Server] Python raised an error during on_join: {Message}", ex.Message);
+                    playersMap.Remove(userId);
+                }
+            }
         }
 
         private void VoiceLobby_onNetworkJson(long sender, byte channel, JObject jObject)
         {
             if (channel != 2 && channel != 3)
                 return;
-            switch (jObject["action"].Value<string>())
+            string type = jObject["type"].Value<string>();
+
+            switch (type)
             {
                 case "updateCoords":
                 {
@@ -211,14 +287,63 @@ namespace MinecraftProximity
                 }
                 break;
 
-                case "updatemap":
-                {
-                    SetMap(jObject["data"].Value<JObject>());
-                }
-                break;
+                //case "updatemap":
+                //{
+                //    SetMap(jObject["data"].Value<JObject>());
+                //}
+                //break;
 
                 default:
-                    break;
+                {
+                    string msgData = jObject.ToString();
+                    List<JObject> replies = new List<JObject>();
+
+                    using (Py.GIL())
+                    {
+                        //PyObject s = PyObject.FromManagedObject(
+                        //    new
+                        //    {
+                        //        isLocal = sender == Program.currentUserId,
+                        //        userId = sender
+                        //    });
+                        PyDict s = new PyDict();
+
+                        s["isLocal"] = (sender == Program.currentUserId) ? scope.Eval("True") : scope.Eval("False");
+                        s["userId"] = new PyLong(sender);
+
+                        try
+                        {
+                            dynamic data = jsonModule.loads(msgData);
+
+                            dynamic result = logicServerPy.on_message(type, data, s);
+                            if (result == false)
+                            {
+                                Log.Information("Unknown message type {Type}", type);
+                            }
+                            else if (result != null && result != true)
+                            {
+                                if (PyList.IsListType(result))
+                                {
+                                    PyList replyList = PyList.AsList(result);
+                                    foreach (dynamic msg in replyList)
+                                        replies.Add(JObject.Parse(jsonModule.dumps(msg)));
+                                }
+                                else
+                                {
+                                    replies.Add(JObject.Parse(jsonModule.dumps(result)));
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Warning("[Server] Python raised an error during on_message: {Message}", ex.Message);
+                        }
+                    }
+
+                    foreach (JObject msg in replies)
+                        voiceLobby.SendNetworkJson(sender, 0, msg);
+                }
+                break;
             }
         }
 
@@ -240,7 +365,7 @@ namespace MinecraftProximity
 
                 JObject message = JObject.FromObject(new
                 {
-                    action = "updatemap",
+                    type = "updatemap",
                     data = data
                 });
 
@@ -255,34 +380,34 @@ namespace MinecraftProximity
             }
         }
 
-        public void RefreshPlayers()
-        {
-            Dictionary<long, ServerPlayer> newPlayers = new Dictionary<long, ServerPlayer>();
-            foreach (Discord.User user in voiceLobby.GetMembers())
-            {
-                if (playersMap.ContainsKey(user.Id))
-                {
-                    newPlayers[user.Id] = playersMap[user.Id];
-                }
-                else
-                {
-                    ServerPlayer pl = new ServerPlayer(user.Id, user.Username);
-                    using (Py.GIL())
-                        pl.pythonPlayer = GetUser(pl);
+        //public void RefreshPlayers()
+        //{
+        //    Dictionary<long, ServerPlayer> newPlayers = new Dictionary<long, ServerPlayer>();
+        //    foreach (Discord.User user in voiceLobby.GetMembers())
+        //    {
+        //        if (playersMap.ContainsKey(user.Id))
+        //        {
+        //            newPlayers[user.Id] = playersMap[user.Id];
+        //        }
+        //        else
+        //        {
+        //            ServerPlayer pl = new ServerPlayer(user.Id, user.Username);
+        //            using (Py.GIL())
+        //                pl.pythonPlayer = GetUser(pl);
 
-                    newPlayers[user.Id] = pl;
-                }
-            }
-            playersMap = newPlayers;
-        }
+        //            newPlayers[user.Id] = pl;
+        //        }
+        //    }
+        //    playersMap = newPlayers;
+        //}
 
         public void AdvertiseHost()
         {
-            RefreshPlayers();
+            //RefreshPlayers();
 
             JObject data = JObject.FromObject(new
             {
-                action = "changeServer",
+                type = "changeServer",
                 userId = Program.currentUserId
             });
             foreach (ServerPlayer pl in playersMap.Values)
@@ -292,28 +417,28 @@ namespace MinecraftProximity
             Log.Information("[Server] Host has been advertised");
         }
 
-        // Run enclosed with using(Py.GIL())!
-        public dynamic GetUser(ServerPlayer pl)
-        {
-            PyDict dict = new PyDict();
-            dict["pos"] = PyObject.FromManagedObject(null);
+        //// Run enclosed with using(Py.GIL())!
+        //public dynamic GetUser(ServerPlayer pl)
+        //{
+        //    PyDict dict = new PyDict();
+        //    dict["pos"] = PyObject.FromManagedObject(null);
 
-            if (pl.coords.HasValue)
-            {
-                dict["pos"] = new PyDict();
-                dict["pos"]["x"] = new PyFloat(pl.coords.Value.x);
-                dict["pos"]["y"] = new PyFloat(pl.coords.Value.y);
-                dict["pos"]["z"] = new PyFloat(pl.coords.Value.z);
-            }
-            dict["userId"] = new PyInt(pl.userId);
-            dict["username"] = new PyString(pl.playerName);
+        //    if (pl.coords.HasValue)
+        //    {
+        //        dict["pos"] = new PyDict();
+        //        dict["pos"]["x"] = new PyFloat(pl.coords.Value.x);
+        //        dict["pos"]["y"] = new PyFloat(pl.coords.Value.y);
+        //        dict["pos"]["z"] = new PyFloat(pl.coords.Value.z);
+        //    }
+        //    dict["userId"] = new PyInt(pl.userId);
+        //    dict["username"] = new PyString(pl.playerName);
 
-            //using (Py.GIL())
-            //{
-            //return logicServerPy.PlayerFromDict(dict);
-            return logicServerPy.create_player(dict);
-            //}
-        }
+        //    //using (Py.GIL())
+        //    //{
+        //    //return logicServerPy.PlayerFromDict(dict);
+        //    return logicServerPy.create_player(dict);
+        //    //}
+        //}
 
         public void SetUserVolumes(ServerPlayer target, IEnumerable<(long, float)> volumes)
         {
@@ -329,7 +454,7 @@ namespace MinecraftProximity
 
             JObject data = JObject.FromObject(new
             {
-                action = "setVolumes",
+                type = "setVolumes",
                 players = playersData
             });
 
@@ -508,7 +633,7 @@ namespace MinecraftProximity
                                     {
                                         playersData.Add(JObject.FromObject(new
                                         {
-                                            name = pl.playerName,
+                                            name = pl.displayName,
                                             x = pl.coords?.x ?? 0.0f,
                                             y = pl.coords?.y ?? 0.0f,
                                             z = pl.coords?.z ?? 0.0f
@@ -517,7 +642,7 @@ namespace MinecraftProximity
 
                                     JObject message = JObject.FromObject(new
                                     {
-                                        action = "updateplayers",
+                                        type = "updateplayers",
                                         data = playersData
                                     });
 

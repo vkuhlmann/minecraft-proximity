@@ -6,6 +6,7 @@ using Serilog;
 using System.Threading;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Linq;
 
 namespace MinecraftProximity
 {
@@ -329,13 +330,18 @@ namespace MinecraftProximity
             });
         }
 
+        public Discord.User? GetMember(long userId)
+        {
+            return GetMembers().Select(u => (Discord.User?)u).FirstOrDefault(user => user?.Id == userId);
+        }
+
         public void SendBroadcast(string message)
         {
             foreach (var user in GetMembers())
             {
                 JObject payload = JObject.FromObject(new
                 {
-                    action = "broadcastReceive",
+                    type = "broadcastReceive",
                     message = message
                 });
 

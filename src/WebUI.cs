@@ -96,7 +96,7 @@ namespace MinecraftProximity
 
             JObject message = JObject.FromObject(new
             {
-                action = "updatemap",
+                type = "updatemap",
                 data = JObject.Parse(data)
             });
 

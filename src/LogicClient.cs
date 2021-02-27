@@ -27,6 +27,7 @@ namespace MinecraftProximity
 
         public void SetLocalVolume(float volume = 1.0f)
         {
+            volume = Math.Min(Math.Max(0.0f, volume), 2.0f);
             byte byteVolume = (byte)(volume * 100.0f);
             if (byteVolume == this.byteVolume)
                 return;
@@ -177,9 +178,9 @@ namespace MinecraftProximity
 
         public async Task HandleMessage(JObject data)
         {
-            string action = data["action"].Value<string>();
+            string type = data["type"].Value<string>();
 
-            if (action == "setVolume")
+            if (type == "setVolume")
             {
                 //await SetLocalVolume(data["userId"].Value<long>(), data["volume"].Value<float>());
                 long userId = data["userId"].Value<long>();
@@ -190,7 +191,7 @@ namespace MinecraftProximity
                 if (players.TryGetValue(userId, out Player pl))
                     pl.SetLocalVolume(volume);
             }
-            else if (action == "setVolumes")
+            else if (type == "setVolumes")
             {
                 //Log.Information("Setting volumes! {Data}", data["players"].ToString());
 
@@ -208,7 +209,7 @@ namespace MinecraftProximity
                     }
                 }
             }
-            else if (action == "sendCoords")
+            else if (type == "sendCoords")
             {
                 Coords? coords = await coordsReader.GetCoords();
                 await SendCoordinates(coords);
@@ -224,7 +225,7 @@ namespace MinecraftProximity
             //    for (string line in lines) {
             //        Log.Information("[Chat]");
             //    }
-            else if (action == "broadcastReceive")
+            else if (type == "broadcastReceive")
             {
                 string message = data["message"].Value<string>();
                 message.Replace("\r", "");
@@ -233,7 +234,7 @@ namespace MinecraftProximity
                 foreach (string line in lines)
                     Log.Information("[Broadcast] {Message}", line);
             }
-            else if (action == "changeServer")
+            else if (type == "changeServer")
             {
                 long userId = data["userId"].Value<long>();
 
@@ -258,17 +259,17 @@ namespace MinecraftProximity
                 Log.Information("[Client] Changed server to user {UserId}.", username ?? userId.ToString());
                 RefreshPlayers();
             }
-            else if (action == "updatemap")
+            else if (type == "updatemap")
             {
                 instance.webUI?.ReceiveUpdate(data["data"].ToString());
             }
-            else if (action == "updateplayers")
+            else if (type == "updateplayers")
             {
                 instance.webUI?.UpdatePlayers(data["data"].ToString());
             }
             else
             {
-                Log.Warning("[Client] Unknown action \"{Action}\".", action);
+                Log.Warning("[Client] Unknown action \"{Action}\".", type);
             }
         }
 
@@ -281,7 +282,7 @@ namespace MinecraftProximity
 
             JObject message = JObject.FromObject(new
             {
-                action = "updateCoords",
+                type = "updateCoords",
                 userId = ownUserId,
                 this.coords.x,
                 this.coords.y,

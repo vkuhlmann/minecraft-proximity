@@ -4,6 +4,7 @@ import numpy as np
 import re
 import json
 
+
 class Obscuration:
     def __init__(self, lowCorner, highCorner, transmissionCoeff):
         self.transmissionCoeff = transmissionCoeff
@@ -48,59 +49,76 @@ class Obscuration:
         highRay[1] = lowRay[1]
         dist = np.linalg.norm(highRay - lowRay)
         factor = np.exp(np.log(self.transmissionCoeff) * dist)
-        #print(factor)
         return factor
 
-# def generateObscurations(l, dens):
-#     l.clear()
-#     for v in range(len(dens.densities)):
-#         for u in range(len(dens.densities[v])):
-#             x = u + dens.x
-#             y = v + dens.z
-#             coeff = dens.densities[v][u]
-#             if coeff >= 0.95:
-#                 continue
-
-#             l.append(Obscuration(
-#                 np.array([x, 0, y]),
-#                 np.array([x + 1, 255, y + 1]),
-#                 transmissionCoeff=coeff
-#             ))
-#     #print(f"Obscurations are now\n{l}")
-
-
-def create_server():
-    return LogicServer()
+# Do the setup. The returned object needs to implement a number of methods.
+# See the implementation of LogicServer for which they are.
+def create_server(send_message_handler):
+    return LogicServer(send_message_handler)
 
 class Player:
     def __init__(self, di, server):
         self.pos = np.array([di["pos"]["x"], di["pos"]["y"], di["pos"]["z"]]) \
-                if di["pos"] is not None else None
+            if di["pos"] is not None else None
         self.userId = di["userId"]
-        self.username = di["username"]
+        self.discordUsername = di["discordUsername"]
+        self.discordDiscriminator = di["discordDiscriminator"]
+        self.displayName = di["displayName"]
         self.server = server
 
     def set_position(self, x, y, z):
         self.pos = np.array([x, y, z])
 
-        #     return {
-        #     "pos": np.array([dict["pos"]["x"], dict["pos"]["y"], dict["pos"]["z"]]) \
-        #         if dict["pos"] is not None else None,
-        #     "userId": dict["userId"],
-        #     "username": dict["username"]
-        # }
 
 class LogicServer:
-    def __init__(self):
+    def __init__(self, send_message_handler):
+        self.send_message = send_message_handler
         self.obscurations = [Obscuration(
             np.array([92, 56, -59]),
             np.array([93, 58, -53]),
             transmissionCoeff=0.1)]
 
-        #densitymap.densityMap.onUpdate = lambda: generateObscurations(self.obscurations, densitymap.densityMap)
         self.prevBase = None
+        self.allow_updatemap_remote = True
+        self.players = []
 
         self.positions = {}
+
+    # Return one of:
+    #   False: the command was not handled (unknown command)
+    #   True (or None): the command was handled
+    #   a dictionary: a response
+    #   a list of dictionaries: messages to respond
+    #
+    def on_message(self, msgType, msg, sender):
+        resolve = {
+            "updatemap": self.on_updatemap
+        }
+        if msgType in resolve:
+            return resolve[msgType](msg, sender)
+        return False
+
+    def on_updatemap(self, msg, sender):
+        if not self.allow_updatemap_remote and not sender["isLocal"]:
+            return {
+                "type": "error",
+                "data": {
+                    "message": "No permission to use updatemap"
+                }
+            }
+
+        self.clear_obscurations()
+        self.add_density_map(msg["data"])
+        self.broadcast({
+            "type": "updatemap",
+            **msg
+        })
+
+        print(f"Updated map")
+
+    def broadcast(self, msg):
+        for pl in self.players:
+            self.send_message(pl.userId, msg)
 
     def clear_obscurations(self):
         self.obscurations = []
@@ -112,7 +130,7 @@ class LogicServer:
             for u in range(len(data["pixelart"][v])):
                 x = u + data["x"]
                 y = v + data["z"]
-                coeff = data["toCoefficient"][str(data["pixelart"][v][u])] #data.pixelart[v][u]
+                coeff = data["toCoefficient"][str(data["pixelart"][v][u])]
                 if coeff >= 0.95:
                     continue
 
@@ -121,103 +139,77 @@ class LogicServer:
                     np.array([x + 1, 255, y + 1]),
                     transmissionCoeff=coeff
                 ))
-        print(f"Updated obscurations")
+        # for obsc in self.obscurations:
+        #     print(f"{obsc.lowCorner}, {obsc.highCorner}, {obsc.transmissionCoeff}")
 
-        for obsc in self.obscurations:
-            print(f"{obsc.lowCorner}, {obsc.highCorner}, {obsc.transmissionCoeff}")
 
-    def create_player(self, di):
-        #return LogicServer.PlayerFromDict(di)
-        return Player(di, self)
-        
+    # Return: something which has a set_position method
+    def on_join(self, di):
+        pl = Player(di, self)
+        self.players += [pl]
+        print(f"Joined: {pl.displayName}")
+        return pl
+
+    def on_leave(self, pl):
+        # Remove the player from the players list.
+        for i in range(len(self.players)):
+            if self.players[i] == pl:
+                del self.players[i]
+                print(f"Left: {pl.displayName}")
+                return
+        print("Warning: leaving player was not registered")
+
     def shutdown(self):
-        # print("Shutting down Python LogicServer")
-        # densitymap.isQuitRequested = True
-        # #densitymap.loop.call_soon_threadsafe(densitymap.loop.stop)
-        # densitymap.thr.join()
-        # densitymap.loop.call_soon_threadsafe(densitymap.loop.stop)
-        print("Shut down Python LogicServer")
+        print("[Server > Python] Shut down.")
 
-
+    # Return one of:
+    #   False: the command was not handled (unknown command)
+    #   True (or None): the command was handled
+    #   a str: output to print
+    #
     def handle_command(self, cmdName, args):
-        #print(f"Received command {cmdName} with args '{args}'")
-        # if cmdName == "updatemap":
-        #     print("Updating map...")
-        #     for username, pos in self.positions.items():
-        #         densitymap.densityMap.setPlayerPosition(username, pos[0], pos[2])
-        #         print(f"Submitted player {username} (x={pos[0]}, z={pos[2]})")
+        commands = {
+            "hi": self.handle_hi
+        }
 
-        #     print("Updated map")
-        #     return True
-        # if cmdName == "topleft":
-        #     self.HandleTopLeftCommand(args)
-        #     return True
+        if cmdName in commands:
+            reply = []
+            def outp(line):
+                reply += [line]
+
+            commands[cmdName](args, outp)
+            if len(reply) > 0:
+                ans = "\n".join(reply)
+                return ans
+            else:
+                return True
         return False
 
-    # def HandleTopLeftCommand(self, args):
-    #     m = re.fullmatch(r"((?P<x>(\+|-|)\d+) (?P<z>(\+|-|)\d+))?", args)
-    #     if m is None:
-    #         print("Invalid syntax. Syntax is")
-    #         print("topleft [<x> <z>]")
-    #         return
-    #     if m.group("x") is None:
-    #         print(f"topleft is {densitymap.densityMap.x}, {densitymap.densityMap.z}")
-    #         return
-    #     x = int(m.group("x"))
-    #     z = int(m.group("z"))
-    #     prevX = densitymap.densityMap.x
-    #     prevZ = densitymap.densityMap.z
-
-    #     densitymap.densityMap.x = x
-    #     densitymap.densityMap.z = z
-
-    #     print(f"topleft is now {densitymap.densityMap.x}, {densitymap.densityMap.z} (was {prevX}, {prevZ})")
-
-    @staticmethod
-    def Create():
-        return LogicServer()
-
-    # @staticmethod
-    # def PlayerFromDict(dict):
-    #     return {
-    #         "pos": np.array([dict["pos"]["x"], dict["pos"]["y"], dict["pos"]["z"]]) \
-    #             if dict["pos"] is not None else None,
-    #         "userId": dict["userId"],
-    #         "username": dict["username"]
-    #     }
+    def handle_hi(self, args, outp):
+        outp("Hi there!")
+        outp("This is how you respond.")
+        if len(args) > 0:
+            outp(f"You supplied an argument: {args}")
+        else:
+            outp(f"You didn't supply an argument.")
 
     def get_volume(self, base, oth):
         basePos = base.pos
         othPos = oth.pos
-        #self.callId += 1
 
-        # if base["username"] not in self.lastUpdatedTime or self.lastUpdatedTime[base["username"]] + 40 < self.callId:
-        #     self.lastUpdatedTime[base["username"]] = self.callId
-        #     #self.prevBase = base
-        #     try:
-        #         if basePos != None:
-        #             densitymap.densityMap.setPlayerPosition(base["username"], basePos[0], basePos[2])
-        #         else:
-        #             densitymap.densityMap.setPlayerPosition(base["username"], 0, 0)
-        #     except Exception as ex:
-        #         print(f"Error setting player position: {ex}")
-
-        if base.username not in self.positions:
-            self.positions[base.username] = np.array([0, 0, 0])
+        if base.discordUsername not in self.positions:
+            self.positions[base.discordUsername] = np.array([0, 0, 0])
 
         if basePos is not None:
-            self.positions[base.username] = basePos
+            self.positions[base.discordUsername] = basePos
 
         if basePos is None or othPos is None:
             return 1.0
         dist = np.linalg.norm(basePos - othPos)
-        #return max(1.0 - dist / 10.0, 0.0)
         halvingDistance = 10
 
         factor = 1.0
-        #print(f"Obscurations: {len(self.obscurations)}")
         for obsc in self.obscurations:
             factor *= obsc.getFactor(othPos, basePos)
-        #print(f"Factor: {factor}")
 
         return max(1.0 - (dist / halvingDistance)**2 / 2, 0.0) * factor

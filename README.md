@@ -4,6 +4,12 @@
 This application reads your Minecraft coordinates from the screen (use HUD from Vanilla Tweaks or provisionally the F3 screen).
 Then, it uses the Discord Game API to set the volumes of you and your party. And then: have fun!
 
+My one-take demo (not great, but for now sufficient I'd say): https://youtu.be/kvT7hmtxVss
+
+_The project is still early in its development. Please contact me if you want to try it out._
+
+***
+
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG.
 
 This application is still very much in development. I would appreciate any engagement. If you are on the TitanCraft server, you
@@ -25,7 +31,7 @@ dotnet publish -r win-x64 -c Release -p:PublishTrimmed=true
 
 4. Open the `publish` directory mentioned by the command output.
 5. The directory is flooded with DLL's. You could use it like this...
-6. ... or, what I did: I used the trick of [dnSpy's AppHostPatcher](https://github.com/dnSpy/dnSpy/blob/master/Build/AppHostPatcher/Program.cs). Compile it. Navigate your terminal to the `publish` directory, and execute
+6. ... or, what I did: I used the trick of [dnSpy's AppHostPatcher](https://github.com/dnSpy/dnSpy/blob/master/Build/AppHostPatcher/Program.cs). Compile it. Navigate your terminal to the `publish/` directory, and execute
 ```
 "D:\path\to\apphostpatcher\apphostpatcher.exe" MinecraftProximity.exe -d bin
 ```

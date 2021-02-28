@@ -7,11 +7,12 @@ import logging
 import threading
 import time
 
+# Note: by default the program now uses a coordinate reader in C#.
+# Python is a bit slow.
+
 # pip install Pillow
 # pip install screeninfo
-# pip install PyAudio-*.whl
 # pip install numpy
-
 
 class CoordinateReader:
     def __init__(self):

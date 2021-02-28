@@ -37,6 +37,8 @@ namespace MinecraftProximity
         public static string exeFile;
         public static DirectoryInfo pythonDir;
 
+        public static ConcurrentQueue<Task> onDiscordThread;
+
         static string locateExeFile()
         {
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -70,6 +72,7 @@ namespace MinecraftProximity
         {
             Console.Title = "Minecraft Proximity - Version 1.0.0-beta.6";
             instance = null;
+            onDiscordThread = new ConcurrentQueue<Task>();
 
             assemblyDir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);
 

@@ -7,6 +7,8 @@ import logging
 import threading
 import time
 
+# Dependency of coordinatereader.py
+
 # pip install Pillow
 # pip install screeninfo
 # pip install numpy

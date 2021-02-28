@@ -130,7 +130,14 @@ namespace MinecraftProximity
 
         public void SendMessageHandler(long recipient, dynamic msg)
         {
-            voiceLobby.SendNetworkJson(recipient, 0, JObject.Parse(jsonModule.dumps(msg)));
+            string msgString;
+            using (Py.GIL())
+            {
+                msgString = jsonModule.dumps(msg);
+                msg = null;
+            }
+
+            voiceLobby.SendNetworkJson(recipient, 0, JObject.Parse(msgString));
         }
 
         public void Stop()
@@ -181,11 +188,20 @@ namespace MinecraftProximity
                     if (logicServerPy == null)
                         return false;
                     dynamic ans = logicServerPy.handle_command(cmdName, args);
-                    if (ans == false)
-                        return false;
+                    PyObject obj = ans;
 
-                    if (PyString.IsStringType(ans))
-                        Console.WriteLine((string)ans);
+                    if (obj != null)
+                    {
+                        if (PyString.IsStringType(obj))
+                        {
+                            Console.WriteLine(obj.As<string>());
+                        }
+                        else if (!obj.IsNone() && !obj.IsTrue())
+                        {
+                            return false;
+                        }
+                    }
+
                     return true;
                 }
                 catch (Exception ex)
@@ -245,7 +261,7 @@ namespace MinecraftProximity
                     PyDict dict = new PyDict();
                     dict["pos"] = PyObject.FromManagedObject(null);
 
-                    dict["userId"] = new PyInt(userId);
+                    dict["userId"] = new PyLong(userId);
                     dict["discordUsername"] = new PyString(pl.discordUsername);
                     dict["discordDiscriminator"] = new PyString(pl.discordDiscriminator);
                     dict["displayName"] = new PyString(pl.displayName);
@@ -316,21 +332,24 @@ namespace MinecraftProximity
                             dynamic data = jsonModule.loads(msgData);
 
                             dynamic result = logicServerPy.on_message(type, data, s);
-                            if (result == false)
+                            //Log.Information("Reply type: {Type}", result?.GetType());
+
+                            PyObject obj = result;
+                            if (obj != null)
                             {
-                                Log.Information("Unknown message type {Type}", type);
-                            }
-                            else if (result != null && result != true)
-                            {
-                                if (PyList.IsListType(result))
+                                if (PySequence.IsSequenceType(obj))
                                 {
                                     PyList replyList = PyList.AsList(result);
                                     foreach (dynamic msg in replyList)
                                         replies.Add(JObject.Parse(jsonModule.dumps(msg)));
                                 }
-                                else
+                                else if (PyDict.IsDictType(obj))
                                 {
                                     replies.Add(JObject.Parse(jsonModule.dumps(result)));
+                                }
+                                else if (!obj.IsNone() && !obj.IsTrue())
+                                {
+                                    Log.Warning("Unknown message type: {Type}.", type);
                                 }
                             }
                         }
@@ -430,7 +449,7 @@ namespace MinecraftProximity
         //        dict["pos"]["y"] = new PyFloat(pl.coords.Value.y);
         //        dict["pos"]["z"] = new PyFloat(pl.coords.Value.z);
         //    }
-        //    dict["userId"] = new PyInt(pl.userId);
+        //    dict["userId"] = new PyLong(pl.userId);
         //    dict["username"] = new PyString(pl.playerName);
 
         //    //using (Py.GIL())

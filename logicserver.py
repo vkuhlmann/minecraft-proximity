@@ -1,6 +1,5 @@
 
 import numpy as np
-#import densitymap
 import re
 import json
 
@@ -114,7 +113,7 @@ class LogicServer:
             **msg
         })
 
-        print(f"Updated map")
+        print(f"[Server > Python] Updated map")
 
     def broadcast(self, msg):
         for pl in self.players:
@@ -124,8 +123,6 @@ class LogicServer:
         self.obscurations = []
 
     def add_density_map(self, data):
-        data = json.loads(data)
-
         for v in range(len(data["pixelart"])):
             for u in range(len(data["pixelart"][v])):
                 x = u + data["x"]
@@ -147,7 +144,7 @@ class LogicServer:
     def on_join(self, di):
         pl = Player(di, self)
         self.players += [pl]
-        print(f"Joined: {pl.displayName}")
+        print(f"[Server > Python] Joined: {pl.displayName}")
         return pl
 
     def on_leave(self, pl):
@@ -157,7 +154,7 @@ class LogicServer:
                 del self.players[i]
                 print(f"Left: {pl.displayName}")
                 return
-        print("Warning: leaving player was not registered")
+        print("[Server > Python] Warning: leaving player was not registered")
 
     def shutdown(self):
         print("[Server > Python] Shut down.")
@@ -175,6 +172,7 @@ class LogicServer:
         if cmdName in commands:
             reply = []
             def outp(line):
+                nonlocal reply
                 reply += [line]
 
             commands[cmdName](args, outp)

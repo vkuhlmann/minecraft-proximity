@@ -350,11 +350,16 @@ namespace MinecraftProximity
                                 {
                                     PyList replyList = PyList.AsList(result);
                                     foreach (dynamic msg in replyList)
-                                        replies.Add(JObject.Parse(jsonModule.dumps(msg)));
+                                    {
+                                        string strReply = jsonModule.dumps(msg);
+                                        replies.Add(JObject.Parse(strReply));
+                                    }
                                 }
                                 else if (PyDict.IsDictType(obj))
                                 {
-                                    replies.Add(JObject.Parse(jsonModule.dumps(result)));
+                                    string strReply = jsonModule.dumps(result);
+
+                                    replies.Add(JObject.Parse(strReply));
                                 }
                                 else if (!obj.IsNone() && !obj.IsTrue())
                                 {
@@ -364,7 +369,7 @@ namespace MinecraftProximity
                         }
                         catch (Exception ex)
                         {
-                            Log.Warning("[Server] Python raised an error during on_message: {Message}", ex.Message);
+                            Log.Warning("[Server] Python raised an error during on_message: {Message}\n{Stacktrace}", ex.Message, ex.StackTrace);
                         }
                     }
 

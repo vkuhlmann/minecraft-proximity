@@ -80,6 +80,7 @@ class LogicServer:
         self.prevBase = None
         self.allow_updatemap_remote = True
         self.players = []
+        self.map = None
 
         self.positions = {}
 
@@ -91,11 +92,33 @@ class LogicServer:
     #
     def on_message(self, msgType, msg, sender):
         resolve = {
-            "updatemap": self.on_updatemap
+            "updatemap": self.on_updatemap,
+            "webui": self.on_webui,
+            "sendmap": self.on_sendmap
         }
         if msgType in resolve:
             return resolve[msgType](msg, sender)
         return False
+
+    def on_webui(self, msg, sender):
+        print("Received webui")
+
+        res = self.on_message(msg["data"]["type"], msg["data"], sender)
+        if isinstance(res, dict):
+            res = [res]
+        if isinstance(res, list):
+            return [{"type": "webui", "data": r} for r in res]
+        return res
+
+    def on_sendmap(self, msg, sender):
+        print("Received sendmap")
+
+        if self.map != None:
+            return({
+                "type": "updatemap",
+                "data": self.map
+            })
+
 
     def on_updatemap(self, msg, sender):
         if not self.allow_updatemap_remote and not sender["isLocal"]:
@@ -105,6 +128,8 @@ class LogicServer:
                     "message": "No permission to use updatemap"
                 }
             }
+
+        self.map = msg["data"]
 
         self.clear_obscurations()
         self.add_density_map(msg["data"])

@@ -55,6 +55,14 @@ async def socket_listen(websocket, path):
     # register(websocket) sends user_event() to websocket
     await register(websocket)
     try:
+        send_message({
+            "type": "webui",
+            "data": {
+                "type": "sendmap",
+                "data": {}
+            }
+        })
+        
         #await websocket.send(state_event())
         async for message in websocket:
             data = json.loads(message)
@@ -121,6 +129,7 @@ httpd = None
 isServingForever = False
 httpdDirectory = None
 loop = None
+send_message = None
 
 class RequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, request, client_address, server):
@@ -141,8 +150,8 @@ def do_httpd():
 
     httpd.server_close()
 
-def start_webui(basepath, onupdated_callback_p):
-    global thr, onupdated_callback, httpd, httpdDirectory, httpThr, loop
+def start_webui(basepath, onupdated_callback_p, send_message_callback):
+    global thr, onupdated_callback, httpd, httpdDirectory, httpThr, loop, send_message
     if thr != None:
         print("Thr was already non-null!")
         return
@@ -151,6 +160,7 @@ def start_webui(basepath, onupdated_callback_p):
 
     httpdDirectory = os.path.join(basepath, "webui")
 
+    send_message = send_message_callback
     onupdated_callback = onupdated_callback_p
 
     thr = threading.Thread(target=DoDensityMapServer)

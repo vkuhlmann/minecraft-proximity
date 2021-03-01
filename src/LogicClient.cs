@@ -243,7 +243,8 @@ namespace MinecraftProximity
                 long userId = data["userId"].Value<long>();
 
                 string username = null;
-                if (voiceLobby != null) {
+                if (voiceLobby != null)
+                {
                     try
                     {
                         //username = voiceLobby.GetMembers().First(user => user.Id == userId).Username;
@@ -264,14 +265,26 @@ namespace MinecraftProximity
                 Log.Information("[Client] Changed server to user {UserId}.", username ?? userId.ToString());
                 RefreshPlayers();
             }
-            else if (type == "updatemap")
+            else if (type == "webui")
             {
-                instance.webUI?.ReceiveUpdate(data["data"].ToString());
+                WebUI webUI = instance.webUI;
+                if (webUI != null)
+                    webUI.HandleMessage(data["data"].Value<JObject>());
             }
-            else if (type == "updateplayers")
+            else if (type == "updatemap" || type == "updateplayers")
             {
-                instance.webUI?.UpdatePlayers(data["data"].ToString());
+                WebUI webUI = instance.webUI;
+                if (webUI != null)
+                    webUI.HandleMessage(data);
             }
+            //else if (type == "updatemap")
+            //{
+            //    instance.webUI?.ReceiveUpdate(data["data"].ToString());
+            //}
+            //else if (type == "updateplayers")
+            //{
+            //    instance.webUI?.UpdatePlayers(data["data"].ToString());
+            //}
             else
             {
                 Log.Warning("[Client] Unknown action \"{Action}\".", type);

@@ -100,8 +100,16 @@ namespace MinecraftProximity
                 data = JObject.Parse(data)
             });
 
+
             //transmitsProcessing.Enqueue(true);
-            instance.client.voiceLobby.SendNetworkJson(instance.client.serverUser, 3, message);
+            long? dest = instance.client?.serverUser;
+            if (dest > 0)
+            {
+                instance.client.voiceLobby.SendNetworkJson(dest.Value, 2, message);
+            } else
+            {
+                Log.Warning("Can't send update: no server user!");
+            }
         }
 
         public bool PythonHandleCommand(string subcommand, string args)

@@ -125,7 +125,10 @@ namespace MinecraftProximity
         private void VoiceLobby_onMemberDisconnect(long lobbyId, long userId)
         {
             if (serverUser == userId)
+            {
                 serverUser = -1;
+                return;
+            }
             RefreshPlayers();
 
             if (serverUser == -1)

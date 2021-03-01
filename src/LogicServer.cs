@@ -254,14 +254,14 @@ namespace MinecraftProximity
 
         private void OnUserJoin(long userId)
         {
-            AdvertiseHost();
-
             Discord.User user = voiceLobby.GetMember(userId);
             if (user.Username == null)
                 return;
 
             ServerPlayer pl = new ServerPlayer(userId, user.Username, user.Discriminator);
             playersMap[userId] = pl;
+
+            AdvertiseHost();
 
             using (Py.GIL())
             {

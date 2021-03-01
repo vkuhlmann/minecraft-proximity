@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
 using System.Linq;
+using MinecraftProximity.DiscordAsync;
 
 namespace MinecraftProximity
 {
@@ -31,7 +32,7 @@ namespace MinecraftProximity
             byte byteVolume = (byte)(volume * 100.0f);
             if (byteVolume == this.byteVolume)
                 return;
-            Discord.VoiceManager voiceManager = Program.discord.GetVoiceManager();
+            VoiceManager voiceManager = Program.discord.GetVoiceManager();
             voiceManager.SetLocalVolume(userId, byteVolume);
             this.volume = volume;
             this.byteVolume = byteVolume;
@@ -242,7 +243,8 @@ namespace MinecraftProximity
                 if (voiceLobby != null) {
                     try
                     {
-                        username = voiceLobby.GetMembers().First(user => user.Id == userId).Username;
+                        //username = voiceLobby.GetMembers().First(user => user.Id == userId).Username;
+                        username = voiceLobby.GetMember(userId).Username;
                     }
                     catch (InvalidOperationException) { }
                 }

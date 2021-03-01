@@ -116,8 +116,14 @@ namespace MinecraftProximity
             this.voiceLobby.onMemberConnect += VoiceLobby_onMemberConnect;
             this.voiceLobby.onMemberDisconnect += VoiceLobby_onMemberDisconnect;
 
-            foreach (Discord.User user in this.voiceLobby.GetMembers())
-                OnUserJoin(user.Id);
+            IEnumerable<Discord.User> users = voiceLobby.GetMembers();
+
+            instance.Queue("JoinAllMembers", () =>
+            {
+                foreach (Discord.User user in users)
+                    OnUserJoin(user.Id);
+                return null;
+            });
 
             voiceLobby.onNetworkJson += VoiceLobby_onNetworkJson;
 
@@ -239,17 +245,20 @@ namespace MinecraftProximity
 
         private void VoiceLobby_onMemberConnect(long lobbyId, long userId)
         {
-            OnUserJoin(userId);
+            instance.Queue("OnUserJoin", () =>
+            {
+                OnUserJoin(userId);
+                return null;
+            });
         }
 
         private void OnUserJoin(long userId)
         {
             AdvertiseHost();
 
-            Discord.User? userNullable = voiceLobby.GetMember(userId);
-            if (!userNullable.HasValue)
+            Discord.User user = voiceLobby.GetMember(userId);
+            if (user.Username == null)
                 return;
-            Discord.User user = userNullable.Value;
 
             ServerPlayer pl = new ServerPlayer(userId, user.Username, user.Discriminator);
             playersMap[userId] = pl;
@@ -430,9 +439,8 @@ namespace MinecraftProximity
                 userId = Program.currentUserId
             });
             foreach (ServerPlayer pl in playersMap.Values)
-            {
                 voiceLobby.SendNetworkJson(pl.userId, 0, data);
-            }
+
             Log.Information("[Server] Host has been advertised");
         }
 

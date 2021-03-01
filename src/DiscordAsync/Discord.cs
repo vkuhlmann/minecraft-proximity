@@ -4,15 +4,16 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
 
 namespace MinecraftProximity.DiscordAsync
 {
-    public class Discord : IDisposable
+    using IntDiscord = global::Discord.Discord;
+
+    public sealed class Discord : IDisposable
     {
-        private global::Discord.Discord internalDiscord;
-        private global::Discord.LobbyManager lobbyManager;
+        private IntDiscord internalDiscord;
+        //private global::Discord.LobbyManager lobbyManager;
 
         private Thread thread;
         private ConcurrentQueue<Request> requests;
@@ -22,17 +23,23 @@ namespace MinecraftProximity.DiscordAsync
         private object resultLock;
         private bool isShutdownRequested;
 
+        public LobbyManager LobbyManager { get; private set; }
+        public VoiceManager VoiceManager { get; private set; }
+        public ActivityManager ActivityManager { get; private set; }
+        public UserManager UserManager { get; private set; }
+        public OverlayManager OverlayManager { get; private set; }
+        public int ManagedThreadId { get; private set; }
+
         public bool isUseAutoFlush
         {
             get;
             private set;
         }
 
-        private struct Request
+        public struct Request
         {
             public Action action;
-            public Task task;
-            public CancellationTokenSource cancel;
+            public Action<Exception> sendError;
         }
 
         public Discord(long clientId, ulong flags, bool isUseAutoFlush)
@@ -49,6 +56,7 @@ namespace MinecraftProximity.DiscordAsync
 
 
             thread = new Thread(() => DoThread(clientId, flags, out exception));
+            ManagedThreadId = thread.ManagedThreadId;
             thread.Start();
 
             int joinMs = 200;
@@ -83,17 +91,40 @@ namespace MinecraftProximity.DiscordAsync
             }
         }
 
+
+        public LobbyManager GetLobbyManager() => LobbyManager;
+        public VoiceManager GetVoiceManager() => VoiceManager;
+        public ActivityManager GetActivityManager() => ActivityManager;
+        public UserManager GetUserManager() => UserManager;
+        public OverlayManager GetOverlayManager() => OverlayManager;
+
+        public void SetLogHook(global::Discord.LogLevel level, IntDiscord.SetLogHookHandler handler)
+        {
+            requests.Enqueue(new Request
+            {
+                action = () =>
+                {
+                    internalDiscord.SetLogHook(level, handler);
+                }
+            });
+        }
+
         private void DoThread(long clientId, ulong flags, out Exception exception)
         {
             exception = null;
             try
             {
-                internalDiscord = new global::Discord.Discord(clientId, flags);
+                internalDiscord = new IntDiscord(clientId, flags);
                 lock (resultLock)
                 {
                     hasStarted = true;
                 }
-                lobbyManager = internalDiscord.GetLobbyManager();
+
+                LobbyManager = new LobbyManager(this, internalDiscord.GetLobbyManager());
+                VoiceManager = new VoiceManager(this, internalDiscord.GetVoiceManager());
+                ActivityManager = new ActivityManager(this, internalDiscord.GetActivityManager());
+                UserManager = new UserManager(this, internalDiscord.GetUserManager());
+                OverlayManager = new OverlayManager(this, internalDiscord.GetOverlayManager());
 
             }
             catch (Exception ex)
@@ -118,22 +149,17 @@ namespace MinecraftProximity.DiscordAsync
                         if (requests.TryDequeue(out Request request))
                             request.action();
                         else
-                            Thread.Sleep(5);
+                            Thread.Sleep(1);
                     }
 
                     if (isUseAutoFlush)
                     {
                         internalDiscord.RunCallbacks();
-                        lobbyManager.FlushNetwork();
+                        LobbyManager.FlushNetwork();
                     }
 
-                    Thread.Sleep(5);
-
-                    nextPause += pauseInterval;
                     time = Environment.TickCount64;
-
-                    if (nextPause + 2000 < time)
-                        nextPause = time - 1000;
+                    nextPause = time + pauseInterval;
                 }
             }
             catch (Exception ex)
@@ -145,7 +171,7 @@ namespace MinecraftProximity.DiscordAsync
                 {
                     try
                     {
-                        request.cancel?.Cancel();
+                        request.sendError(new Exception("Discord thread crashed."));
                     }
                     catch (Exception) { }
                 }
@@ -163,35 +189,73 @@ namespace MinecraftProximity.DiscordAsync
             }
         }
 
-        public void RunCallbacks()
+        public Task RunCallbacks()
         {
             if (isUseAutoFlush)
-                return;
+                return Task.CompletedTask;
 
-            requests.Enqueue(new Request
+            TaskCompletionSource<bool> taskCompletionSource = new TaskCompletionSource<bool>();
+
+            Queue(new Request
             {
                 action = () =>
                 {
                     internalDiscord.RunCallbacks();
-                }
+                    taskCompletionSource.SetResult(true);
+                },
+                sendError = e => taskCompletionSource.SetException(e)
             });
+            return taskCompletionSource.Task;
         }
 
-        public void FlushNetwork()
+        public void Queue(Request request)
+        {
+            if (exception != null)
+                throw new Exception("Discord thread crashed.");
+            requests.Enqueue(request);
+        }
+
+        public Task FlushNetwork()
         {
             if (isUseAutoFlush)
-                return;
+                return Task.CompletedTask;
 
-            requests.Enqueue(new Request
+            TaskCompletionSource<bool> taskCompletionSource = new TaskCompletionSource<bool>();
+
+            Queue(new Request
             {
                 action = () =>
                 {
-                    lobbyManager.FlushNetwork();
+                    LobbyManager.FlushNetwork();
+                    taskCompletionSource.TrySetResult(true);
+                },
+                sendError = ex =>
+                {
+                    taskCompletionSource.TrySetException(ex);
                 }
             });
+            return taskCompletionSource.Task;
         }
 
-        void IDisposable.Dispose()
+        public Task FlushRequests()
+        {
+            TaskCompletionSource<bool> taskCompletionSource = new TaskCompletionSource<bool>();
+
+            Queue(new Request
+            {
+                action = () =>
+                {
+                    taskCompletionSource.TrySetResult(true);
+                },
+                sendError = ex =>
+                {
+                    taskCompletionSource.TrySetException(ex);
+                }
+            });
+            return taskCompletionSource.Task;
+        }
+
+        public void Dispose()
         {
             isShutdownRequested = true;
             if (thread == null)
@@ -207,5 +271,7 @@ namespace MinecraftProximity.DiscordAsync
                     break;
             }
         }
+
+
     }
 }

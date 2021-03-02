@@ -101,8 +101,6 @@ class LogicServer:
         return False
 
     def on_webui(self, msg, sender):
-        print("Received webui")
-
         res = self.on_message(msg["data"]["type"], msg["data"], sender)
         if isinstance(res, dict):
             res = [res]
@@ -111,8 +109,6 @@ class LogicServer:
         return res
 
     def on_sendmap(self, msg, sender):
-        print("Received sendmap")
-
         if self.map != None:
             return({
                 "type": "updatemap",

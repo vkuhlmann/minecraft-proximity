@@ -17,6 +17,11 @@ namespace MinecraftProximity
         dynamic module;
         Action<string> updateDelegate;
         Instance instance;
+        dynamic jsonModule;
+
+        delegate void DelegateSendServerMessageHandler(dynamic msg);
+
+        DelegateSendServerMessageHandler sendMessageHandler;
 
         public WebUI(Instance instance)
         {
@@ -43,10 +48,12 @@ namespace MinecraftProximity
                 SendUpdate(data);
             };
 
+            sendMessageHandler = SendMessageHandler;
+
             using (Py.GIL())
             {
                 scope = Py.CreateScope();
-                IEnumerable<string> imports = new List<string> { "sys", "webui" };
+                IEnumerable<string> imports = new List<string> { "json", "webui" };
                 Dictionary<string, dynamic> modules = new Dictionary<string, dynamic>();
 
                 foreach (string import in imports)
@@ -56,12 +63,36 @@ namespace MinecraftProximity
                 }
 
                 module = modules["webui"];
+                jsonModule = modules["json"];
 
-                module.start_webui(libPath, updateDelegate);
+                module.start_webui(libPath, updateDelegate, sendMessageHandler);
                 //dynamic inst = coordinateReader.CoordinateReader.Create();
                 //coordReaderPy = inst;
             }
             Log.Information("[WebUI] Initialization done.");
+        }
+
+        public void SendMessageHandler(dynamic msg)
+        {
+            string msgString;
+            using (Py.GIL())
+            {
+                msgString = jsonModule.dumps(msg);
+                msg = null;
+            }
+
+            LogicClient cl = instance.client;
+            if (cl == null)
+            {
+                Log.Warning("[WebUI] Can't send message! Client is null.");
+                return;
+            }
+
+            long recipient = cl.serverUser;
+            if (recipient >= 0)
+                cl.voiceLobby.SendNetworkJson(recipient, 2, JObject.Parse(msgString));
+            else
+                Log.Warning("[WebUI] Can't send update: no server user!");
         }
 
         public void Stop()
@@ -89,6 +120,19 @@ namespace MinecraftProximity
             }
         }
 
+        public void HandleMessage(JObject data)
+        {
+            string type = data["type"].Value<string>();
+            if (type == "updatemap")
+            {
+                ReceiveUpdate(data["data"].ToString());
+            } else if (type == "updateplayers")
+            {
+                UpdatePlayers(data["data"].ToString());
+            }
+
+        }
+
         public void SendUpdate(string data)
         {
             if (instance.client == null)
@@ -100,8 +144,16 @@ namespace MinecraftProximity
                 data = JObject.Parse(data)
             });
 
+
             //transmitsProcessing.Enqueue(true);
-            instance.client.voiceLobby.SendNetworkJson(instance.client.serverUser, 3, message);
+            long? dest = instance.client?.serverUser;
+            if (dest > 0)
+            {
+                instance.client.voiceLobby.SendNetworkJson(dest.Value, 2, message);
+            } else
+            {
+                Log.Warning("Can't send update: no server user!");
+            }
         }
 
         public bool PythonHandleCommand(string subcommand, string args)

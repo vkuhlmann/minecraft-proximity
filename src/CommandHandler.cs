@@ -114,10 +114,11 @@ namespace MinecraftProximity
 
             Instance instance = Program.instance;
 
-            instance?.Queue("SendBroadcast", async () =>
+            instance?.Queue("SendBroadcast", () =>
             {
                 instance.currentLobby?.SendBroadcast(argument);
-                await Task.CompletedTask;
+                return null;
+                //await Task.CompletedTask;
             });
             await Task.CompletedTask;
         }
@@ -155,14 +156,22 @@ namespace MinecraftProximity
             instance?.Queue("OpenOverlay", async () =>
             {
                 var overlayManager = Program.discord.GetOverlayManager();
-                overlayManager.OpenVoiceSettings((result) =>
+                //overlayManager.OpenVoiceSettings((result) =>
+                //{
+                //    if (result == Discord.Result.Ok)
+                //    {
+                //        Console.WriteLine("The overlay has been opened in Discord.");
+                //    }
+                //});
+                //await Task.CompletedTask;
+                Discord.Result result = await overlayManager.OpenVoiceSettings();
+                if (result == Discord.Result.Ok)
                 {
-                    if (result == Discord.Result.Ok)
-                    {
-                        Console.WriteLine("The overlay has been opened in Discord.");
-                    }
-                });
-                await Task.CompletedTask;
+                    Log.Information("The overlay has been opened in Discord.");
+                } else
+                {
+                    Log.Warning("Failed to open overlay. Result was {Result}", result);
+                }
             });
             await Task.CompletedTask;
         }

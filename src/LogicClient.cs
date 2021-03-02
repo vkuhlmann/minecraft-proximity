@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
 using System.Linq;
+using MinecraftProximity.DiscordAsync;
 
 namespace MinecraftProximity
 {
@@ -31,7 +32,7 @@ namespace MinecraftProximity
             byte byteVolume = (byte)(volume * 100.0f);
             if (byteVolume == this.byteVolume)
                 return;
-            Discord.VoiceManager voiceManager = Program.discord.GetVoiceManager();
+            VoiceManager voiceManager = Program.discord.GetVoiceManager();
             voiceManager.SetLocalVolume(userId, byteVolume);
             this.volume = volume;
             this.byteVolume = byteVolume;
@@ -124,7 +125,10 @@ namespace MinecraftProximity
         private void VoiceLobby_onMemberDisconnect(long lobbyId, long userId)
         {
             if (serverUser == userId)
+            {
                 serverUser = -1;
+                return;
+            }
             RefreshPlayers();
 
             if (serverUser == -1)
@@ -239,10 +243,12 @@ namespace MinecraftProximity
                 long userId = data["userId"].Value<long>();
 
                 string username = null;
-                if (voiceLobby != null) {
+                if (voiceLobby != null)
+                {
                     try
                     {
-                        username = voiceLobby.GetMembers().First(user => user.Id == userId).Username;
+                        //username = voiceLobby.GetMembers().First(user => user.Id == userId).Username;
+                        username = voiceLobby.GetMember(userId).Username;
                     }
                     catch (InvalidOperationException) { }
                 }
@@ -259,14 +265,26 @@ namespace MinecraftProximity
                 Log.Information("[Client] Changed server to user {UserId}.", username ?? userId.ToString());
                 RefreshPlayers();
             }
-            else if (type == "updatemap")
+            else if (type == "webui")
             {
-                instance.webUI?.ReceiveUpdate(data["data"].ToString());
+                WebUI webUI = instance.webUI;
+                if (webUI != null)
+                    webUI.HandleMessage(data["data"].Value<JObject>());
             }
-            else if (type == "updateplayers")
+            else if (type == "updatemap" || type == "updateplayers")
             {
-                instance.webUI?.UpdatePlayers(data["data"].ToString());
+                WebUI webUI = instance.webUI;
+                if (webUI != null)
+                    webUI.HandleMessage(data);
             }
+            //else if (type == "updatemap")
+            //{
+            //    instance.webUI?.ReceiveUpdate(data["data"].ToString());
+            //}
+            //else if (type == "updateplayers")
+            //{
+            //    instance.webUI?.UpdatePlayers(data["data"].ToString());
+            //}
             else
             {
                 Log.Warning("[Client] Unknown action \"{Action}\".", type);

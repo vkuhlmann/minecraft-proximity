@@ -18,8 +18,8 @@ namespace MinecraftProximity
 {
     class Program
     {
-        public static Discord.Discord discord;
-        public static Discord.LobbyManager lobbyManager;
+        public static DiscordAsync.Discord discord;
+        public static DiscordAsync.LobbyManager lobbyManager;
         public static long currentUserId;
 
         // Based on Discord Game DSK example:
@@ -70,7 +70,7 @@ namespace MinecraftProximity
 
         static async Task RunAsync(string[] args)
         {
-            Console.Title = "Minecraft Proximity - Version 1.0.0-beta.6";
+            Console.Title = "Minecraft Proximity - Version 1.0.0";
             instance = null;
             onDiscordThread = new ConcurrentQueue<Task>();
 
@@ -99,10 +99,10 @@ namespace MinecraftProximity
                 Environment.SetEnvironmentVariable("DISCORD_INSTANCE_ID", instanceID);
             }
 
-            Discord.Discord discord;
+            DiscordAsync.Discord discord;
             try
             {
-                discord = new Discord.Discord(long.Parse(clientID), (long)Discord.CreateFlags.Default);
+                discord = new DiscordAsync.Discord(long.Parse(clientID), (long)Discord.CreateFlags.Default, false);
             }
             catch (Exception ex)
             {
@@ -112,7 +112,6 @@ namespace MinecraftProximity
                 return;
             }
             Program.discord = discord;
-
 
             CancellationTokenSource cancelExecLoopSource = new CancellationTokenSource();
             CancellationToken cancelExecLoop = cancelExecLoopSource.Token;
@@ -249,9 +248,9 @@ namespace MinecraftProximity
                 }
 
                 var userManager = discord.GetUserManager();
-                userManager.OnCurrentUserUpdate += () =>
+                userManager.OnCurrentUserUpdate += async () =>
                 {
-                    var currentUser = userManager.GetCurrentUser();
+                    var currentUser = await userManager.GetCurrentUser();
                     Log.Information("Current user is {Username}#{Discriminator} ({Id}).", currentUser.Username, currentUser.Discriminator, currentUser.Id);
 
                     currentUserId = currentUser.Id;

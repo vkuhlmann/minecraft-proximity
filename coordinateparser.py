@@ -9,13 +9,8 @@ import time
 
 # Dependency of coordinatereader.py
 
-# pip install Pillow
-# pip install screeninfo
-# pip install numpy
-
 WHITE_COLOR = (252, 252, 252)
 GRAY_COLOR = (221, 221, 221)
-
 
 class CoordinateParser:
     def __init__(self, snippeter):

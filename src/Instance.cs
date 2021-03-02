@@ -22,6 +22,11 @@ namespace MinecraftProximity
 
         public ConcurrentQueue<(string name, Task task, CancellationTokenSource cts)> runningTasks;
 
+        long errorBunchDur;
+        long errorBunchEnd;
+        long errorBunchMax;
+        long errorBunchCount;
+
         public async Task createLobbyIfNone()
         {
             if (isShutdownRequested)
@@ -96,6 +101,25 @@ namespace MinecraftProximity
             runningTasks.Enqueue((name, task, cts));
         }
 
+        private void HandleTaskError(string taskName, Exception ex)
+        {
+            if (ex is AggregateException aggreEx)
+            {
+                if (aggreEx.InnerExceptions.Count == 1)
+                    ex = aggreEx.InnerExceptions[0];
+                else
+                    throw ex;
+            }
+
+            if (ex is TaskCanceledException)
+                return;
+
+            if (++errorBunchCount <= errorBunchMax)
+                Log.Warning("Task {Name} ended with error: {Msg}\n{StackTrace}", taskName, ex.Message, ex.StackTrace);
+            else if (errorBunchCount == errorBunchMax + 1)
+                Log.Warning("Hiding errors, max rate has been reached.", ex.Message);
+        }
+
         public async Task Run(string activitySecret)
         {
             createLobby = true;
@@ -105,14 +129,19 @@ namespace MinecraftProximity
             server = null;
             webUI = null;
 
+            errorBunchDur = (long)TimeSpan.FromSeconds(10).TotalMilliseconds;
+            errorBunchEnd = Environment.TickCount64 + errorBunchDur;
+            errorBunchMax = 3;
+            errorBunchCount = 0;
+
             var activityManager = Program.discord.GetActivityManager();
             var lobbyManager = Program.discord.GetLobbyManager();
 
             runningTasks = new ConcurrentQueue<(string, Task, CancellationTokenSource)>();
 
-            List<(string name, int frame, Func<Task> start)> scheduledTasks = new List<(string, int, Func<Task>)>
+            List<(string name, long time, Func<Task> start)> scheduledTasks = new List<(string, long, Func<Task>)>
             {
-                ("CreateLobbyIfNone", 180, async () =>
+                ("CreateLobbyIfNone", Environment.TickCount64 + 3000, async () =>
                 {
                     await createLobbyIfNone();
                 })
@@ -131,11 +160,6 @@ namespace MinecraftProximity
             //runningTasks.Enqueue((execLoop, cancelExecLoopSource));
 
             Task delayingTask = Task.CompletedTask;
-
-            long errorBunchDur = (long)TimeSpan.FromSeconds(10).TotalMilliseconds;
-            long errorBunchEnd = Environment.TickCount64 + errorBunchDur;
-            long errorBunchMax = 3;
-            long errorBunchCount = 0;
 
             RepeatProfiler profiler = new RepeatProfiler(TimeSpan.FromSeconds(20),
                 (RepeatProfiler.Result result) =>
@@ -160,9 +184,11 @@ namespace MinecraftProximity
                 //profiler.Start();
                 frame += 1;
                 int i = 0;
+                long currentTime = Environment.TickCount64;
+
                 while (i < scheduledTasks.Count)
                 {
-                    if (scheduledTasks[i].frame > 0)
+                    if (scheduledTasks[i].time > currentTime)
                     {
                         i++;
                         continue;
@@ -173,7 +199,7 @@ namespace MinecraftProximity
                     scheduledTasks.RemoveAt(i);
                 }
 
-                if (Environment.TickCount64 >= errorBunchEnd)
+                if (currentTime >= errorBunchEnd)
                 {
                     if (errorBunchCount > errorBunchMax)
                         Log.Information("Showing errors again. Hid {NumErrors} errors.", errorBunchCount - errorBunchMax);
@@ -212,29 +238,11 @@ namespace MinecraftProximity
                     TaskStatus st = task.Status;
                     try
                     {
-                        try
-                        {
-                            await task;
-                        }
-                        catch (AggregateException ex)
-                        {
-                            if (ex.InnerExceptions.Count == 1)
-                                throw ex.InnerExceptions[0];
-                            else
-                                throw ex;
-                        }
+                        await task;
                     }
-                    catch (TaskCanceledException) { }
                     catch (Exception ex)
                     {
-                        if (++errorBunchCount <= errorBunchMax)
-                        {
-                            Log.Warning("Task {Name} ended with error: {Msg}\n{StackTrace}", name, ex.Message, ex.StackTrace);
-                        }
-                        else if (errorBunchCount == errorBunchMax + 1)
-                        {
-                            Log.Warning("Hiding errors, max rate has been reached.", ex.Message);
-                        }
+                        HandleTaskError(name, ex);
                     }
                 }
 
@@ -247,10 +255,22 @@ namespace MinecraftProximity
                     (string name, Func<Task> b) nt;
                     if (nextTasks.TryDequeue(out nt))
                     {
-                        Task c = nt.b();
-                        delayingTask = c;
-                        runningTasks.Enqueue((nt.name, c, null));
-                        profiler.Start();
+                        Task c = null;
+                        try
+                        {
+                            c = nt.b();
+                        }
+                        catch (Exception ex)
+                        {
+                            HandleTaskError(nt.name, ex);
+                        }
+
+                        if (c != null)
+                        {
+                            delayingTask = c;
+                            runningTasks.Enqueue((nt.name, c, null));
+                            profiler.Start();
+                        }
                     }
                     else if (isShutdownRequested && !isShuttingDown)
                     {
@@ -275,13 +295,13 @@ namespace MinecraftProximity
                     }
                 }
 
-                Program.discord.RunCallbacks();
+                await Program.discord.RunCallbacks();
                 lobbyManager.FlushNetwork();
 
                 //profiler.Stop();
 
-                for (i = 0; i < scheduledTasks.Count; i++)
-                    scheduledTasks[i] = (scheduledTasks[i].name, scheduledTasks[i].frame - 1, scheduledTasks[i].start);
+                //for (i = 0; i < scheduledTasks.Count; i++)
+                //    scheduledTasks[i] = (scheduledTasks[i].name, scheduledTasks[i].frame - 1, scheduledTasks[i].start);
 
                 if (nextTasks.Count == 0 && delayingTask.IsCompleted)
                     await Task.Delay(1000 / 100);

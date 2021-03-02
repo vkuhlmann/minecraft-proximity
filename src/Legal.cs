@@ -13,8 +13,8 @@ namespace MinecraftProximity
 {
     class Legal
     {
-        public const string TERMS_VERSION = "2021-02-24T18:04Z";
-        public const string PRIVACYPOLICY_VERSION = "2021-02-22T09:57Z";
+        public const string TERMS_VERSION = "2021-03-02T12:04Z";
+        public const string PRIVACYPOLICY_VERSION = "2021-03-02T12:09Z";
 
         enum LegalFileType
         {
@@ -93,11 +93,65 @@ namespace MinecraftProximity
             if (a.Count() > 0)
                 Console.WriteLine($"The {friendlyName} has been updated (version {legalFile.Value.majorVersion}).");
 
-            Console.WriteLine("Working with the Discord API and some dependencies involves some legal talk,");
-            Console.WriteLine("which requires your explicit consent before the program can be used.");
-            Console.WriteLine();
-            Console.WriteLine($"Use of this program is subject to the {friendlyName}, which can be found at");
-            Console.WriteLine($"  {legalFile.Value.path}");
+
+            List<string> inlineLines = new List<string>();
+
+            bool brokenShort = false;
+            int maxInlineLineCount = 15;
+            bool alreadyContent = false;
+
+            foreach (string line in File.ReadLines(legalFile.Value.path))
+            {
+                if (line.StartsWith("% minecraft-proximity")
+                    || line.StartsWith("% MAJOR-VERSION")
+                    || line.StartsWith("% MINOR-VERSION"))
+                    continue;
+
+                if (line.StartsWith("% EXTENDED"))
+                {
+                    brokenShort = true;
+                    break;
+                }
+
+                if (string.IsNullOrWhiteSpace(line) && !alreadyContent)
+                    continue;
+
+                alreadyContent = true;
+
+                inlineLines.Add(line);
+                if (inlineLines.Count > maxInlineLineCount)
+                    break;
+            }
+
+            if (inlineLines.Count == 0)
+                return true;
+
+            if (inlineLines.Count <= maxInlineLineCount)
+            {
+                Console.WriteLine();
+                Console.WriteLine($"The {friendlyName}:");
+                Console.WriteLine();
+                foreach (string line in inlineLines)
+                    Console.WriteLine(line);
+
+                if (brokenShort)
+                {
+                    Console.WriteLine($"The extended version can be found at");
+                    Console.WriteLine($"  {legalFile.Value.path}");
+                }
+            }
+            else
+            {
+                Console.WriteLine();
+                Console.WriteLine($"Use of this program is subject to the {friendlyName}, which can be found at");
+                Console.WriteLine($"  {legalFile.Value.path}");
+            }
+
+            //Console.WriteLine("Working with the Discord API and some dependencies involves some legal talk,");
+            //Console.WriteLine("which requires your explicit consent before the program can be used.");
+            //Console.WriteLine();
+            //    Console.WriteLine($"Use of this program is subject to the {friendlyName}, which can be found at");
+            //    Console.WriteLine($"  {legalFile.Value.path}");
             //bool hasAgreed = AskYesNoQuestion($"Do you agree with the {friendlyName}?");
             bool hasAgreed = AskYesNoQuestion($"\x1b[92mDo you agree with the {friendlyName}? (Y)es/(N)o\x1b[0m");
             if (!hasAgreed)

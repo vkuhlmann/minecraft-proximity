@@ -161,12 +161,13 @@ namespace MinecraftProximity
 
             Task delayingTask = Task.CompletedTask;
 
-            RepeatProfiler profiler = new RepeatProfiler(TimeSpan.FromSeconds(20),
+            //TimeSpan.FromSeconds(20),
+            RepeatProfiler profiler = new RepeatProfiler(Program.configFile.GetUpdateRate("instanceloop_performanceStats", false).baseInterval,
                 (RepeatProfiler.Result result) =>
                 {
-                    //Log.Information("On mainloop. Takes {DurMs:F2} ms on average. Executed {Executed} times. Rate: {Rate} per second. Occupation: {OccupationPerc:F2}%.",
-                    //    result.durMs, result.handledCount, result.rate, result.occupation * 100.0f);
-                    //Log.Information("On mainloop. minDurMs: {MinDurMs}, maxDurMs: {MaxDurMs}", result.minDurMs, result.maxDurMs);
+                    Log.Information("On mainloop. Takes {DurMs:F2} ms on average. Executed {Executed} times. Rate: {Rate} per second. Occupation: {OccupationPerc:F2}%.",
+                        result.durMs, result.handledCount, result.rate, result.occupation * 100.0f);
+                    Log.Information("On mainloop. minDurMs: {MinDurMs}, maxDurMs: {MaxDurMs}", result.minDurMs, result.maxDurMs);
                 });
 
             Log.Information("\x1b[92mRunning! Enter 'quit' to quit.\x1b[0m");
@@ -319,6 +320,9 @@ namespace MinecraftProximity
 
         async Task DoPrintCoordsLoop(CancellationToken tok)
         {
+            TimeSpan interval = Program.configFile.GetUpdateRate("coordinatesreader_print", false).baseInterval;
+            if (interval.TotalSeconds <= 0)
+                return;
             while (true)
             {
                 tok.ThrowIfCancellationRequested();
@@ -339,7 +343,7 @@ namespace MinecraftProximity
                     await Task.CompletedTask;
                 });
                 await cs.Task;
-                await Task.Delay(TimeSpan.FromSeconds(30), tok);
+                await Task.Delay(interval, tok);
             }
         }
 

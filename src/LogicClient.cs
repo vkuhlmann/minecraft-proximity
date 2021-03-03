@@ -49,7 +49,9 @@ namespace MinecraftProximity
         public Coords coords { get; protected set; }
         public long serverUser { get; protected set; }
         long ownUserId;
-        public TimeSpan sendCoordsInterval { get; set; }
+
+        public UpdateRate sendCoordsRate;
+        public long sendCoordsInterval;
 
         CancellationTokenSource cancelTransmitCoords;
         Task transmitCoordsTask;
@@ -68,8 +70,10 @@ namespace MinecraftProximity
             coordsReader = new CoordinateReaderSharp();
             serverUser = -1;
             ownUserId = Program.currentUserId;
-            //sendCoordsInterval = TimeSpan.FromMilliseconds(240);
-            sendCoordsInterval = TimeSpan.FromMilliseconds(1000 / 12);
+
+            sendCoordsRate = Program.configFile.GetUpdateRate("client_sendcoords", true);
+            sendCoordsInterval = (long)sendCoordsRate.baseInterval.TotalMilliseconds;
+
             //transmitsProcessing = new ConcurrentQueue<bool>();
 
             this.voiceLobby.onMemberConnect += VoiceLobby_onMemberConnect;
@@ -323,18 +327,14 @@ namespace MinecraftProximity
             {
                 Log.Information("[Client] Starting send coordinates loop.");
                 long ticks = Environment.TickCount64;
-                long sendIntervalTicks;
 
                 TimeSpan minDelay = TimeSpan.FromMilliseconds(1);
 
-                //long statsStart = Environment.TickCount64;
-                //TimeSpan statsInterval = TimeSpan.FromSeconds(20);
-                //long nextStatsTickcount = Environment.TickCount64 + (long)statsInterval.TotalMilliseconds;
                 int submissions = 0;
                 int successes = 0;
                 TaskCompletionSource<bool> completionSource = null;
 
-                RepeatProfiler profiler = new RepeatProfiler(TimeSpan.FromSeconds(20),
+                RepeatProfiler profiler = new RepeatProfiler(Program.configFile.GetUpdateRate("client_sendcoords_performanceStats", false).baseInterval,
                     (RepeatProfiler.Result res) =>
                     {
                         float successRate = successes / Math.Max(1.0f, submissions);
@@ -402,20 +402,18 @@ namespace MinecraftProximity
                         //    successes = 0;
                         //}
 
-                        sendIntervalTicks = (long)sendCoordsInterval.TotalMilliseconds;
-
                         long nowTicks = Environment.TickCount64;
-                        if (nowTicks >= ticks + sendIntervalTicks)
+                        if (nowTicks >= ticks + sendCoordsInterval)
                         {
-                            if (nowTicks > ticks + sendIntervalTicks + 2000)
-                                ticks = nowTicks - sendIntervalTicks;
+                            if (nowTicks > ticks + sendCoordsInterval + 2000)
+                                ticks = nowTicks - sendCoordsInterval;
                             else
-                                ticks += sendIntervalTicks;
+                                ticks += sendCoordsInterval;
                         }
                         else
                         {
-                            await Task.Delay((int)(ticks + sendIntervalTicks - nowTicks), ct);
-                            ticks += sendIntervalTicks;
+                            await Task.Delay((int)(ticks + sendCoordsInterval - nowTicks), ct);
+                            ticks += sendCoordsInterval;
                         }
                         //await Task.Delay(sendCoordsInterval, ct);
                     }

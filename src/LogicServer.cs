@@ -78,7 +78,8 @@ namespace MinecraftProximity
         {
             isSettingMap = false;
             this.instance = instance;
-            coordsRateMeasureDur = TimeSpan.FromSeconds(2);
+            //coordsRateMeasureDur = TimeSpan.FromSeconds(2);
+            coordsRateMeasureDur = Program.configFile.GetUpdateRate("server_coordinatesRate_measure", true).baseInterval;
             coordsRateMeasureDurMs = (long)coordsRateMeasureDur.TotalMilliseconds;
 
             Log.Information("[Server] Initializing server...");
@@ -88,7 +89,7 @@ namespace MinecraftProximity
             playersStores = new ConcurrentQueue<List<ServerPlayer>>();
             volumesStores = new ConcurrentQueue<VolumesMatrix>();
 
-            calculateVolumesProfiler = new RepeatProfiler(TimeSpan.FromSeconds(20),
+            calculateVolumesProfiler = new RepeatProfiler(Program.configFile.GetUpdateRate("server_calculate_performanceStats", false).baseInterval,
                 (RepeatProfiler.Result result) =>
                 {
                     Log.Information("[Server] Calculate volumes takes {DurMs:F2} ms on average ({Req} requests completed)", result.durMs, result.handledCount);
@@ -318,6 +319,7 @@ namespace MinecraftProximity
 
                         pl.coords = new Coords(x, y, z);
                         pl.coordsTimestamp = Environment.TickCount64;
+                        pl.coordsRateMeasureCount++;
                     }
                     else
                     {
@@ -543,9 +545,6 @@ namespace MinecraftProximity
                 }
             }
 
-            foreach (ServerPlayer pl in playersMap.Values)
-                pl.coordsRateMeasureCount++;
-
             List<ServerPlayer> playersStore;
             if (!playersStores.TryDequeue(out playersStore))
                 playersStore = new List<ServerPlayer>();
@@ -651,12 +650,13 @@ namespace MinecraftProximity
             {
                 Log.Information("[Server] Starting server loop");
                 long ticks = Environment.TickCount64;
-                TimeSpan sendInterval = TimeSpan.FromMilliseconds(1000 / 10);
+                //TimeSpan sendInterval = TimeSpan.FromMilliseconds(1000 / 10);
+                TimeSpan sendInterval = Program.configFile.GetUpdateRate("server_calculate", false).baseInterval;
                 long sendIntervalTicks = (long)sendInterval.TotalMilliseconds;
 
                 TimeSpan minDelay = TimeSpan.FromMilliseconds(5);
 
-                RepeatProfiler stats = new RepeatProfiler(TimeSpan.FromSeconds(20),
+                RepeatProfiler stats = new RepeatProfiler(Program.configFile.GetUpdateRate("server_calculate_performanceStats", false).baseInterval,//TimeSpan.FromSeconds(20),
                     (RepeatProfiler.Result result) =>
                     {
                         // Calculate volumes takes {DurMs:F2} ms on average ({Req} requests completed)", result.durMs, result.handledCount);
@@ -718,7 +718,7 @@ namespace MinecraftProximity
                                         if (pl.coordsTimestamp < Environment.TickCount64 - 1000)
                                             plStatus = "Coords unknown";
                                         else
-                                            plStatus = $"Coords rate: {pl.coordsRate:F2}";
+                                            plStatus = $"Coords: {pl.coordsRate:F2} u/s";
 
                                         playersData.Add(JObject.FromObject(new
                                         {

@@ -40,11 +40,15 @@ namespace MinecraftProximity
         int requests;
         long measureEnd;
         TimeSpan measureDur;
+        bool doMeasure;
 
         public CoordinateReader()
         {
             stopwatch = new Stopwatch();
-            measureDur = TimeSpan.FromSeconds(5);
+            //measureDur = TimeSpan.FromSeconds(5);
+            measureDur = Program.configFile.GetUpdateRate("coordinatesreader_performanceStats", false).baseInterval;
+            doMeasure = measureDur.TotalSeconds > 0.0f;
+
             measureStart = Environment.TickCount64;
             measureEnd = measureStart + (long)measureDur.TotalMilliseconds;
             requests = 0;
@@ -74,7 +78,7 @@ namespace MinecraftProximity
 
         public async Task<Coords?> GetCoords()
         {
-            if (Environment.TickCount64 > measureEnd)
+            if (doMeasure && Environment.TickCount64 > measureEnd)
             {
                 measureEnd = Environment.TickCount64;
 

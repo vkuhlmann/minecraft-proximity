@@ -54,7 +54,7 @@ namespace MinecraftProximity
                 return;
             }
 
-            if (Environment.TickCount64 > measureEnd)
+            if (interval.TotalSeconds > 0 && Environment.TickCount64 > measureEnd)
             {
                 measureEnd = Environment.TickCount64;
 

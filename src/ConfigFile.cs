@@ -139,11 +139,11 @@ namespace MinecraftProximity
                     multiDiscord = false,
                     updateRates = new
                     {
-                        __comment1 = "A preceding underscore means: use system default. Two",
+                        __comment1 = "A preceding underscore means: use system default. Two      ",
                         __comment2 = "preceding underscores: keep in sync with system default. If",
-                        __comment3 = "you want to modify a value, remove the underscores and set",
-                        __comment4 = "your value.",
-                        __comment5 = "Sometimes negative values are allowed. They mean: disable."
+                        __comment3 = "you want to modify a value, remove the underscores and set ",
+                        __comment4 = "your value.                                                ",
+                        __comment5 = "Sometimes negative values are allowed. They mean: disable. "
                     }
                     //agreedTermsVersion = "None",
                     //agreedPrivacyPolicyVersion = "None"

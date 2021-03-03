@@ -11,7 +11,7 @@ playerlistEntry.innerHTML = `
             <input type="text" class="form-control" data-binding="name" style="flex:1 1 2ch;" />
         </div>
     </div>
-    <div>
+    <div data-binding="status">
         Status unknown
     </div>
 </div>
@@ -25,10 +25,11 @@ class PlayerlistEntry {
         this.name = desc["name"] ?? "Unknown";
         this.id = desc["id"];
         this.bindings = {};
+        //console.log(desc);
+        this.status = desc["status"] ?? "Status unknown";
 
         //setBinding(el, "label", `${label}`);
         bindElements(el, [this]);
-        console.log(`Playername is ${this.name}`);
     }
 
     static Create(parent, desc) {
@@ -57,6 +58,11 @@ class PlayerlistEntry {
         this.parent.toName[this.id] = this.name;
         //onChanged();
     }
+
+    setStatus(status) {
+        this.status = status;
+        updateBinding(this, "status");
+    }
 }
 
 class Playerlist {
@@ -74,6 +80,12 @@ class Playerlist {
         this.clear();
         this.add({ value: "AA" });
         this.add({ color: "green", value: "BB" });
+    }
+
+    setOutOfDate() {
+        for (let entry of this.items) {
+            entry.setStatus("Unknown");
+        }
     }
 
     getNextId() {

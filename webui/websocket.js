@@ -4,6 +4,7 @@ let playerPos = {};
 // let mapX = 0;
 // let mapZ = 0;
 let lastPlayerData = null;
+let lastPlayerDataTimestamp = null;
 
 let mapParams = null;
 let clientId = 0;
@@ -26,7 +27,20 @@ function setupMap() {
     playerlist.toName = {"1": "Player 1", "2": "Player 2"};
     playerlist.update();
 
+    setInterval(checkUpToDate, 1000);
     //updateBinding(obj, "label");
+}
+
+function checkUpToDate() {
+    if (lastPlayerDataTimestamp == null 
+        || lastPlayerDataTimestamp < Date.now() - 1500) {
+
+        //console.log(`Out of date (${lastPlayerDataTimestamp} < ${Date.now()} - 1500))`);
+        
+        playerlist.setOutOfDate();
+    } else {
+        //console.log(`Up to date (${lastPlayerDataTimestamp} >= ${Date.now()} - 1500)`);
+    }
 }
 
 function setMapX(val) {
@@ -76,8 +90,9 @@ function tryOpenSocket() {
 
 function handleMessage(json) {
     switch (json.type) {
-        case "playercoords":
+        case "updateplayers":
             {
+                updatePlayerlist(json.data);
                 updatePlayerCoords(json.data);
             }
             break;
@@ -103,8 +118,39 @@ playerIndicator.innerHTML = `
 </g>
 `;
 
+
+function updatePlayerlist(data) {
+    lastPlayerData = data;
+    lastPlayerDataTimestamp = Date.now();
+
+    playerlist.clear();
+    playerlist.toColor = {};
+    playerlist.toName = {};
+
+    let colors = ["rgb(181,186,253)", "rgb(253,180,189)", "rgb(186,253,180)", "rgb(180,232,253)", "rgb(253,251,180)"];
+
+    let i = 0;
+
+    for (let pl of data) {
+        let id = i;
+        i += 1;
+
+        let obj = { value: `${id}`, "id": id };
+        obj.color = colors[id % colors.length];
+        obj.name = pl.name;
+
+        playerlist.toColor[id] = obj.color;
+        playerlist.toName[id] = obj.name;
+
+        obj.status = pl.status;
+        
+        playerlist.add(pl);
+    }
+}
+
 function updatePlayerCoords(data) {
     lastPlayerData = data;
+    lastPlayerDataTimestamp = Date.now();
 
     for (let pl of data) {
         let el = null;
@@ -136,7 +182,7 @@ function updatePlayerCoords(data) {
     //console.log(JSON.stringify(data));
 }
 
-async function sendNewData() {
+function sendNewData() {
     // let data = [];
     // let map = mapper.toCoefficient;
     // let lines = pixelart;
@@ -151,7 +197,7 @@ async function sendNewData() {
     if (socket != null) {
         let data = imageGet();
         data.sender = clientId;
-        await socket.send(JSON.stringify({ "action": "updatemap", "data": data }));
+        socket.send(JSON.stringify({ "action": "updatemap", "data": data }));
 
     } else {
         console.log("Socket is not open! Can't send new data.");

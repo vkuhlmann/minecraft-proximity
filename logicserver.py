@@ -64,9 +64,16 @@ class Player:
         self.discordDiscriminator = di["discordDiscriminator"]
         self.displayName = di["displayName"]
         self.server = server
+        self.coords_rate = 0.0
 
     def set_position(self, x, y, z):
         self.pos = np.array([x, y, z])
+
+    def on_position_unknown(self):
+        self.pos = None
+
+    def set_coords_rate(self, rate):
+        self.coords_rate = rate
 
 
 class LogicServer:
@@ -82,7 +89,7 @@ class LogicServer:
         self.players = []
         self.map = None
 
-        self.positions = {}
+        #self.positions = {}
 
     # Return one of:
     #   False: the command was not handled (unknown command)
@@ -135,6 +142,9 @@ class LogicServer:
         })
 
         print(f"[Server > Python] Updated map")
+
+    def on_coords_rates_updated(self):
+        pass
 
     def broadcast(self, msg):
         for pl in self.players:
@@ -216,11 +226,11 @@ class LogicServer:
         basePos = base.pos
         othPos = oth.pos
 
-        if base.discordUsername not in self.positions:
-            self.positions[base.discordUsername] = np.array([0, 0, 0])
+        # if base.discordUsername not in self.positions:
+        #     self.positions[base.discordUsername] = np.array([0, 0, 0])
 
-        if basePos is not None:
-            self.positions[base.discordUsername] = basePos
+        # if basePos is not None:
+        #     self.positions[base.discordUsername] = basePos
 
         if basePos is None or othPos is None:
             return 1.0

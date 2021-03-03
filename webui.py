@@ -21,7 +21,7 @@ isQuitRequested = False
 def sendCoords(name, x, z):
     scheduledMessages.put(
         json.dumps({
-            "type": "playercoords",
+            "type": "updateplayers",
             "data": [
                 {
                     "name": name,
@@ -227,9 +227,22 @@ def handle_command(cmdName, args):
 
 def set_players(data):
     arr = json.loads(data)
-    for pl in arr:
-        #densityMap.setPlayerPosition(pl["name"], pl["x"], pl["z"])
-        loop.call_soon_threadsafe(lambda: sendCoords(pl["name"], pl["x"], pl["z"]))
+    msg = json.dumps(
+        {
+            "type": "updateplayers",
+            "data": arr
+        })
+
+    def sendUpdate():
+        global scheduledMessages
+        nonlocal msg
+        scheduledMessages.put(msg)
+
+    loop.call_soon_threadsafe(sendUpdate)
+
+    # for pl in arr:
+    #     #densityMap.setPlayerPosition(pl["name"], pl["x"], pl["z"])
+    #     loop.call_soon_threadsafe(lambda: sendCoords(pl["name"], pl["x"], pl["z"]))
 
 def HandleXZCommand(args):
     #global densityMapX,densityMapZ

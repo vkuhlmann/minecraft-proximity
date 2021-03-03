@@ -8,6 +8,8 @@ let lastPlayerData = null;
 let mapParams = null;
 let clientId = 0;
 
+let playerlist;
+
 function setupMap() {
     clientId = Math.floor(Math.random() * 1e9);
 
@@ -18,6 +20,12 @@ function setupMap() {
     mapParams.setMapZ = setMapZ;
 
     bindElements(el, [mapParams]);
+
+    playerlist = new Playerlist($("#playerlist")[0]);
+    playerlist.toColor = {"1": "rgb(181,186,253)", "2": "rgb(63,72,204)"};
+    playerlist.toName = {"1": "Player 1", "2": "Player 2"};
+    playerlist.update();
+
     //updateBinding(obj, "label");
 }
 

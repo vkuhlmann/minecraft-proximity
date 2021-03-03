@@ -25,6 +25,7 @@ class ColorMapperEntry {
         this.color = { value: desc.color || "rgb(255, 0, 0)" };
         this.coefficient = desc["coefficient"] ?? 1.0;
         this.paletteColorID = desc["id"];
+        this.bindings = {};
 
         //setBinding(el, "label", `${label}`);
         bindElements(el, [this]);

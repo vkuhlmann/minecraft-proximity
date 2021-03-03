@@ -54,7 +54,7 @@ class Diagram {
             this.el.setAttribute("transform", `translate(${x} ${y})`);
         };
 
-        this.naturalTileSize = 80;
+        this.naturalTileSize = 40;
         this.zoom = 1.0;
         this.tileSize = this.naturalTileSize * this.zoom;
 

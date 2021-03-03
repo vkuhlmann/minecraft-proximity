@@ -33,6 +33,7 @@
     <script src="colorselection.js"></script>
     <script src="panAndZoom.js"></script>
     <script src="resizing.js"></script>
+    <script src="websocket.js"></script>
     <script src="layout.js"></script>
 
     <!-- Pickr themes -->
@@ -253,6 +254,15 @@
                 <div></div>
             </div>
             <div id="configurationPanel" class="configuration-panel">
+                <div id="mapXZ" class="mapXZ">
+                    <div class="flex:1 1 auto;display:flex;">
+                        <input type="text" class="form-control" data-binding="mapX" id="inputMapX" style="flex:1 1 2ch;" value="50" />
+                    </div>
+                    <div class="flex:1 1 auto;display:flex;">
+                        <input type="text" class="form-control" data-binding="mapZ" id="inputMapZ" style="flex:1 1 2ch;" value="-200"/>
+                    </div>
+                </div>
+
                 <div style="flex:1 0 auto;display:flex;flex-flow:column nowrap;">
                     <textarea class="form-control" id="outputArea" rows="12" style="flex:1 0 auto;display:block;"
                         readonly="readonly"></textarea>

@@ -135,6 +135,9 @@ namespace MinecraftProximity
                         Log.Warning($"Discord: {message}");
                     else
                         Log.Information($"Discord ({level}): {message}");
+
+                    if (level == Discord.LogLevel.Error || level == Discord.LogLevel.Warn)
+                        NetworkLog.Dump(true);
                 });
 
                 var activityManager = discord.GetActivityManager();

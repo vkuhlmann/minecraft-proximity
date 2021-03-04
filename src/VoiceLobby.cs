@@ -32,10 +32,11 @@ namespace MinecraftProximity
 
         public Discord.LobbyManager.ConnectVoiceHandler connVoiceHandler;
         public Instance instance;
-        public bool allowNetwork;
+        public bool isNetworkConnected;
         public long lobbyId { get; private set; }
 
         public Dictionary<long, Discord.User> users;
+
 
         VoiceLobby(Lobby lobby, Instance instance, bool isCreating)
         {
@@ -43,7 +44,7 @@ namespace MinecraftProximity
             lobbyId = this.lobby.Id;
             this.instance = instance;
             lobbyManager = Program.lobbyManager;
-            allowNetwork = false;
+            isNetworkConnected = false;
             users = null;
 
             DoInit(isCreating);
@@ -161,7 +162,7 @@ namespace MinecraftProximity
         async Task DisconnectVoice()
         {
             Discord.Result result = await lobbyManager.DisconnectVoice(lobby.Id);
-                
+
             if (result == Discord.Result.Ok)
                 Log.Information("[Party] Voice chat is now disconnected.");
             else
@@ -170,9 +171,12 @@ namespace MinecraftProximity
 
         async Task DisconnectNetwork()
         {
-            if (!allowNetwork)
+            if (!isNetworkConnected)
+            {
+                Log.Information("Not disconnecting: was not connected.");
                 return;
-            allowNetwork = false;
+            }
+            isNetworkConnected = false;
 
             //instance.Queue("DisconnectNetwork", async () =>
             //   {
@@ -232,36 +236,79 @@ namespace MinecraftProximity
             foreach (var us in lobbyManager.GetMemberUsers(lobbyId))
                 users[us.Id] = us;
 
-            // Connect to voice chat.
-            Task a = lobbyManager.ConnectVoice(lobby.Id).ContinueWith(async res =>
-            {
-                if (await res == Discord.Result.Ok)
-                    Log.Information("[Party] Voice chat is now connected.");
-                else
-                    Log.Error("[Party] Failed to connect to voice. Result was {Result}. (Lobby {LobbyId})", res, lobby.Id);
-            });
 
-            instance.Queue("ConnectVoice", async () =>
-            {
-                await a;
-            });
+            //// Connect to voice chat.
+            //Task a = lobbyManager.ConnectVoice(lobby.Id).ContinueWith(async res =>
+            //{
+            //    if (await res == Discord.Result.Ok)
+            //        Log.Information("[Party] Voice chat is now connected.");
+            //    else
+            //        Log.Error("[Party] Failed to connect to voice. Result was {Result}. (Lobby {LobbyId})", res, lobby.Id);
+            //});
+
+            //instance.Queue("ConnectVoice", async () =>
+            //{
+            //    await a;
+            //});
 
             //Log.Information("[Party] Connecting to network. (Lobby {LobbyId})", lobby.Id);
             lobbyManager.ConnectNetwork(lobby.Id);
 
-            // Channel 0: reliable send to client
-            lobbyManager.OpenNetworkChannel(lobby.Id, 0, true);
+            instance.Queue("OpenNetwork", () =>
+            {
+                if (isCreating)
+                {
 
-            // Channel 1: unreliable send to client
-            lobbyManager.OpenNetworkChannel(lobby.Id, 1, false);
+                    // Channel 0: reliable send to client
+                    lobbyManager.OpenNetworkChannel(lobby.Id, 0, true);
 
-            // Channel 2: reliable send to server
-            lobbyManager.OpenNetworkChannel(lobby.Id, 2, true);
+                    // Channel 1: unreliable send to client
+                    lobbyManager.OpenNetworkChannel(lobby.Id, 1, false);
 
-            // Channel 3: unreliable send/receive to server
-            lobbyManager.OpenNetworkChannel(lobby.Id, 3, false);
+                    // Channel 2: reliable send to server
+                    lobbyManager.OpenNetworkChannel(lobby.Id, 2, true);
 
-            allowNetwork = true;
+                    // Channel 3: unreliable send/receive to server
+                    lobbyManager.OpenNetworkChannel(lobby.Id, 3, false);
+                }
+
+                isNetworkConnected = true;
+
+                instance.Queue("SendHello", () =>
+                {
+                    JObject helloMsg = JObject.FromObject(new
+                    {
+                        type = "join",
+                        data = new { }
+                    });
+
+                    foreach (Discord.User user in GetMembers())
+                    {
+                        if (user.Id == Program.currentUserId)
+                            continue;
+
+                        // DEBUG NETWORK COMMENT ME OUT
+                        SendNetworkJson(user.Id, 2, helloMsg);
+                    };
+
+
+                    instance.Queue("ConnectVoice", async () =>
+                    {
+                        await lobbyManager.ConnectVoice(lobby.Id).ContinueWith(async res =>
+                        {
+                            if (await res == Discord.Result.Ok)
+                                Log.Information("[Party] Voice chat is now connected.");
+                            else
+                                Log.Error("[Party] Failed to connect to voice. Result was {Result}. (Lobby {LobbyId})", res, lobby.Id);
+
+                            instance.Queue("SetLobbyActivity", SetAsActivity);
+                        });
+                    });
+                    return Task.CompletedTask;
+                });
+
+                return Task.CompletedTask;
+            });
 
             //lobbyManager.OnLobbyMessage += (lobbyID, userID, data) =>
             //{
@@ -306,7 +353,7 @@ namespace MinecraftProximity
                 onNetworkJson?.Invoke(userId, channelId, JObject.Parse(Encoding.UTF8.GetString(data)));
             };
 
-            instance.Queue("SetLobbyActivity", SetAsActivity);
+            //instance.Queue("SetLobbyActivity", SetAsActivity);
         }
 
         private void HandleOnMemberConnect(long lobbyId, long userId)
@@ -385,7 +432,7 @@ namespace MinecraftProximity
 
         public void SendNetworkJson(long recipient, byte channel, JObject jObject)
         {
-            if (!allowNetwork)
+            if (!isNetworkConnected)
             {
                 Log.Warning("[Party] Warning: Stopped sending of message because of disconnected network.");
                 return;

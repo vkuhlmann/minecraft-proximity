@@ -259,15 +259,21 @@ namespace MinecraftProximity
 
         private void VoiceLobby_onMemberConnect(long lobbyId, long userId)
         {
-            instance.Queue("OnUserJoin", () =>
-            {
-                OnUserJoin(userId);
-                return null;
-            });
+            //instance.Queue("OnUserJoin", () =>
+            //{
+            //    OnUserJoin(userId);
+            //    return null;
+            //});
         }
 
         private void OnUserJoin(long userId)
         {
+            if (playersMap.ContainsKey(userId))
+            {
+                Log.Information("Received join request from user who is already registered!");
+                return;
+            }
+
             Discord.User user = voiceLobby.GetMember(userId);
             if (user.Username == null)
                 return;
@@ -308,6 +314,19 @@ namespace MinecraftProximity
 
             switch (type)
             {
+                case "join":
+                {
+                    Log.Information("Received network join from {UserId}", sender);
+
+                    instance.Queue("OnUserJoin", () =>
+                    {
+                        // DEBUG NETWORK COMMENT ME OUT
+                        OnUserJoin(sender);
+                        return null;
+                    });
+                }
+                break;
+
                 case "updateCoords":
                 {
                     long userId = jObject["userId"].Value<long>();

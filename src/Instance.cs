@@ -297,7 +297,8 @@ namespace MinecraftProximity
                 }
 
                 await Program.discord.RunCallbacks();
-                lobbyManager.FlushNetwork();
+                if (currentLobby != null && currentLobby.isNetworkConnected)
+                    lobbyManager.FlushNetwork();
 
                 //profiler.Stop();
 

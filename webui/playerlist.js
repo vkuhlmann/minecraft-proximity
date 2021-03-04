@@ -63,6 +63,13 @@ class PlayerlistEntry {
         this.status = status;
         updateBinding(this, "status");
     }
+
+    onDestroy() {
+        let pickr = this.color.pickr;
+        
+        pickr.destroyAndRemove();
+        this.color.pickr = null;
+    }
 }
 
 class Playerlist {
@@ -93,6 +100,9 @@ class Playerlist {
     }
 
     clear() {
+        for (let a of this.items) {
+            a.onDestroy();
+        }
         this.items = [];
         this.el.innerHTML = "";
     }

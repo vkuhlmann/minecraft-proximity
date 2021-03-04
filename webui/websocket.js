@@ -31,6 +31,14 @@ function setupMap() {
 
     $("#globalProximityEnable")[0].addEventListener("click", enableGlobalProximity);
     $("#globalProximityDisable")[0].addEventListener("click", disableGlobalProximity);
+
+    $("#server-tab")[0].addEventListener("click", e => {
+        setTab("server");
+    });
+
+    $("#home-tab")[0].addEventListener("click", e => {
+        setTab("home");
+    });
     //updateBinding(obj, "label");
 }
 

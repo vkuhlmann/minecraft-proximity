@@ -23,20 +23,41 @@ function setupMap() {
     bindElements(el, [mapParams]);
 
     playerlist = new Playerlist($("#playerlist")[0]);
-    playerlist.toColor = {"1": "rgb(181,186,253)", "2": "rgb(63,72,204)"};
-    playerlist.toName = {"1": "Player 1", "2": "Player 2"};
+    playerlist.toColor = { "1": "rgb(181,186,253)", "2": "rgb(63,72,204)" };
+    playerlist.toName = { "1": "Player 1", "2": "Player 2" };
     playerlist.update();
 
     setInterval(checkUpToDate, 1000);
+
+    $("#globalProximityEnable")[0].addEventListener("click", enableGlobalProximity);
+    $("#globalProximityDisable")[0].addEventListener("click", disableGlobalProximity);
     //updateBinding(obj, "label");
 }
 
+function enableGlobalProximity() {
+    socket.send(JSON.stringify({
+        "type": "setParams",
+        "data": {
+            "proximityEnabled": true
+        }
+    }));
+}
+
+function disableGlobalProximity() {
+    socket.send(JSON.stringify({
+        "type": "setParams",
+        "data": {
+            "proximityEnabled": false
+        }
+    }));
+}
+
 function checkUpToDate() {
-    if (lastPlayerDataTimestamp == null 
+    if (lastPlayerDataTimestamp == null
         || lastPlayerDataTimestamp < Date.now() - 1500) {
 
         //console.log(`Out of date (${lastPlayerDataTimestamp} < ${Date.now()} - 1500))`);
-        
+
         playerlist.setOutOfDate();
     } else {
         //console.log(`Up to date (${lastPlayerDataTimestamp} >= ${Date.now()} - 1500)`);
@@ -105,8 +126,30 @@ function handleMessage(json) {
             }
             break;
 
+        case "paramsUpdated":
+            {
+                onParamsUpdated(json);
+            }
+
         default:
             console.log(`Unknown message type ${json.type ?? "null"}`);
+    }
+}
+
+function onParamsUpdated(msg) {
+    if (msg.data.proximityEnabled === true) {
+        $("#globalProximityDisable")[0].classList.add("btn-outline-danger");
+        $("#globalProximityDisable")[0].classList.remove("btn-danger");
+
+        $("#globalProximityEnable")[0].classList.add("btn-success");
+        $("#globalProximityEnable")[0].classList.remove("btn-outline-success");
+
+    } else if (msg.data.proximityEnabled === false) {
+        $("#globalProximityEnable")[0].classList.add("btn-outline-success");
+        $("#globalProximityEnable")[0].classList.remove("btn-success");
+
+        $("#globalProximityDisable")[0].classList.add("btn-danger");
+        $("#globalProximityDisable")[0].classList.remove("btn-outline-danger");
     }
 }
 
@@ -143,7 +186,7 @@ function updatePlayerlist(data) {
         playerlist.toName[id] = obj.name;
 
         obj.status = pl.status;
-        
+
         playerlist.add(pl);
     }
 }
@@ -197,7 +240,7 @@ function sendNewData() {
     if (socket != null) {
         let data = imageGet();
         data.sender = clientId;
-        socket.send(JSON.stringify({ "action": "updatemap", "data": data }));
+        socket.send(JSON.stringify({ "type": "updatemap", "data": data }));
 
     } else {
         console.log("Socket is not open! Can't send new data.");
@@ -213,7 +256,7 @@ async function runCommand(comm) {
 
     if (comm.length > 0) {
         try {
-            await socket.send(JSON.stringify({ "action": "command", "command": comm }));
+            await socket.send(JSON.stringify({ "type": "command", "command": comm }));
         } catch (error) {
             console.log(`Error trying to send the command: ${error}`);
         }

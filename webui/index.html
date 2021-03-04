@@ -212,7 +212,8 @@
                     preserveAspectRatio="xMinYMid meet" class="pannable-diagram">
                     <defs>
                         <g id="template-pointmarker">
-                            <circle cx="0" cy="0" r="5" data-id="centerpoint" fill="black" stroke="black" style="stroke-width:2;" />
+                            <circle cx="0" cy="0" r="5" data-id="centerpoint" fill="black" stroke="black"
+                                style="stroke-width:2;" />
                             <text data-id="plainLabel" data-binding="label" x="0" y="-10"
                                 style="font:normal 18px sans-serif;text-anchor:middle;">Element
                                 a</text>
@@ -240,7 +241,7 @@
                                 </g>
                                 <g id="handleBottom">
                                     <circle r="15" cx="0" cy="0" fill="hsl(122, 100%, 47%)" style="cursor:ns-resize;" />
-                                </g>                                
+                                </g>
                             </g>
                         </g>
                         <circle cx="0" cy="0" style="visibility:hidden;" r="30" fill="red" id="pointerVisual0" />
@@ -257,11 +258,23 @@
             <div id="configurationPanel" class="configuration-panel">
                 <div id="mapXZ" class="mapXZ">
                     <div class="flex:1 1 auto;display:flex;">
-                        <input type="text" class="form-control" data-binding="mapX" id="inputMapX" style="flex:1 1 2ch;" value="50" />
+                        <input type="text" class="form-control" data-binding="mapX" id="inputMapX" style="flex:1 1 2ch;"
+                            value="50" />
                     </div>
                     <div class="flex:1 1 auto;display:flex;">
-                        <input type="text" class="form-control" data-binding="mapZ" id="inputMapZ" style="flex:1 1 2ch;" value="-200"/>
+                        <input type="text" class="form-control" data-binding="mapZ" id="inputMapZ" style="flex:1 1 2ch;"
+                            value="-200" />
                     </div>
+                </div>
+                <div id="quickControls" class="quickControls">
+                    <button type="button" class="btn btn-outline-success" id="globalProximityEnable"
+                        style="display:flex;flex-flow:row nowrap;align-items:center;flex:1 0 auto;">
+                        Enable
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" id="globalProximityDisable"
+                        style="display:flex;flex-flow:row nowrap;align-items:center;flex:1 0 auto;">
+                        Disable
+                    </button>
                 </div>
                 <div id="playerlist" style="flex:1 0 auto;">
 

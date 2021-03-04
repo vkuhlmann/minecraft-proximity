@@ -275,7 +275,7 @@ namespace MinecraftProximity
                 if (webUI != null)
                     webUI.HandleMessage(data["data"].Value<JObject>());
             }
-            else if (type == "updatemap" || type == "updateplayers")
+            else if (type == "updatemap" || type == "updateplayers" || type == "paramsUpdated")
             {
                 WebUI webUI = instance.webUI;
                 if (webUI != null)

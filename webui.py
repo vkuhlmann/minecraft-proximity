@@ -18,6 +18,7 @@ logging.basicConfig()
 scheduledMessages = queue.Queue()
 isQuitRequested = False
 
+
 def sendCoords(name, x, z):
     scheduledMessages.put(
         json.dumps({
@@ -32,6 +33,7 @@ def sendCoords(name, x, z):
         })
     )
 
+
 densityMapX = 0
 densityMapZ = 0
 
@@ -41,14 +43,18 @@ densityMapZ = 0
 USERS = set()
 STATE = {"value": 0}
 
+
 def state_event():
     return json.dumps({"type": "state", **STATE})
+
 
 async def register(websocket):
     USERS.add(websocket)
 
+
 async def unregister(websocket):
     USERS.remove(websocket)
+
 
 async def socket_listen(websocket, path):
     #print("Receiving socket")
@@ -62,16 +68,20 @@ async def socket_listen(websocket, path):
                 "data": {}
             }
         })
-        
-        #await websocket.send(state_event())
+
+        # await websocket.send(state_event())
         async for message in websocket:
             data = json.loads(message)
-            if data["action"] == "updatemap":
-                #print("Updatemap")
+            if data["type"] == "updatemap":
+                # print("Updatemap")
                 await DoUpdateMap(data["data"])
-                
+
+            elif data["type"] == "setParams":
+                if send_message != None:
+                    send_message(data)
+
             else:
-                logging.error(f"[WebUI] Unsupported event: {data['action']}")
+                logging.error(f"[WebUI] Unsupported event: {data['type']}")
     finally:
         await unregister(websocket)
 
@@ -87,25 +97,26 @@ async def doTimeUpdates():
                     message = it
                     await asyncio.wait([user.send(message) for user in USERS])
 
-
     except Exception as e:
         print(f"Exception doing updates: {e}")
         return
+
 
 async def DoUpdateMap(obj):
     global currentState
 
     # obj["x"] = densityMap.x
     # obj["z"] = densityMap.z
-    
+
     # obj["x"] = densityMapX
     # obj["z"] = densityMapZ
-    #densityMap.setDensities(obj)
+    # densityMap.setDensities(obj)
 
     currentState = obj
 
     if onupdated_callback != None:
         onupdated_callback(json.dumps(obj))
+
 
 def DoDensityMapServer():
     asyncio.set_event_loop(loop)
@@ -113,13 +124,15 @@ def DoDensityMapServer():
 
     #print("Starting server!")
     res = asyncio.get_event_loop().run_until_complete(start_server)
-    asyncio.get_event_loop().run_until_complete(asyncio.wait([doTimeUpdates()]))
+    asyncio.get_event_loop().run_until_complete(
+        asyncio.wait([doTimeUpdates()]))
 
     #print(f"res is {res}")
     if res != None:
         res.close()
         asyncio.get_event_loop().run_until_complete(res.wait_closed())
     #print("Server is done")
+
 
 httpThr = None
 thr = None
@@ -131,12 +144,20 @@ httpdDirectory = None
 loop = None
 send_message = None
 
+
 class RequestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, request, client_address, server):
         super().__init__(request, client_address, server, directory=httpdDirectory)
 
     def log_request(self, code='-', size='-'):
         return
+
+    def log_error(self, *args):
+        if "An established connection was aborted by the software in your host machine" in args[0]:
+            print(f"[WebUI] A HTTP connection was broken.")
+        else:
+            super().log_error(*args)
+
 
 def do_httpd():
     global httpd, isServingForever, httpdDirectory
@@ -152,6 +173,7 @@ def do_httpd():
     isServingForever = False
 
     httpd.server_close()
+
 
 def start_webui(basepath, onupdated_callback_p, send_message_callback):
     global thr, onupdated_callback, httpd, httpdDirectory, httpThr, loop, send_message
@@ -172,6 +194,7 @@ def start_webui(basepath, onupdated_callback_p, send_message_callback):
     httpThr = threading.Thread(target=do_httpd)
     httpThr.start()
     print("[WebUI] WebUI has started!")
+
 
 def stop_webui():
     global isServingForever, isQuitRequested, httpThr, httpd, thr, loop, onupdated_callback
@@ -195,6 +218,13 @@ def stop_webui():
 
     print("[WebUI] WebUI has shut down")
 
+
+def on_message(data):
+    scheduledMessages.put(
+        json.dumps(data)
+    )
+
+
 def put_data(data):
     global currentState
 
@@ -210,6 +240,7 @@ def put_data(data):
     )
     currentState = data
 
+
 def handle_command(cmdName, args):
     #print(f"Received command {cmdName} with args '{args}'")
     # if cmdName == "updatemap":
@@ -224,6 +255,7 @@ def handle_command(cmdName, args):
         HandleXZCommand(args)
         return True
     return False
+
 
 def set_players(data):
     arr = json.loads(data)
@@ -243,6 +275,7 @@ def set_players(data):
     # for pl in arr:
     #     #densityMap.setPlayerPosition(pl["name"], pl["x"], pl["z"])
     #     loop.call_soon_threadsafe(lambda: sendCoords(pl["name"], pl["x"], pl["z"]))
+
 
 def HandleXZCommand(args):
     #global densityMapX,densityMapZ
@@ -278,7 +311,5 @@ def HandleXZCommand(args):
     if onupdated_callback != None:
         onupdated_callback(json.dumps(currentState))
 
-    print(f"topleft is now {densityMapX}, {densityMapZ} (was {prevX}, {prevZ})")
-
-
-
+    print(
+        f"topleft is now {densityMapX}, {densityMapZ} (was {prevX}, {prevZ})")

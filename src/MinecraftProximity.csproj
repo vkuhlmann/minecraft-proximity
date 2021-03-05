@@ -4,6 +4,12 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <Platforms>AnyCPU;x64</Platforms>
+    <Version>1.0.1</Version>
+    <Authors>Vincent Kuhlmann</Authors>
+    <Copyright>(c) 2021 Vincent Kuhlmann</Copyright>
+    <Description>https://github.com/vkuhlmann/minecraft-proximity/</Description>
+    <PackageProjectUrl>https://github.com/vkuhlmann/minecraft-proximity/</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/vkuhlmann/minecraft-proximity/</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>

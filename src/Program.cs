@@ -71,7 +71,7 @@ namespace MinecraftProximity
 
         static async Task RunAsync(string[] args)
         {
-            Console.Title = "Minecraft Proximity - Version 1.0.0 + Development";
+            Console.Title = "Minecraft Proximity - Version 1.0.1";
             instance = null;
             gracefulLobbyEnds = new ConcurrentQueue<Task>();
             //onDiscordThread = new ConcurrentQueue<Task>();

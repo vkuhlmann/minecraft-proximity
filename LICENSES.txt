@@ -6,7 +6,10 @@
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG.
 
-When modifying, conform to the Discord Developer Terms Of Service. 
+When modifying, conform to the Discord Developer Terms Of Service. Also, update
+the name in the program's manifest, state its modification upon distribution,
+and if it differs a lot from the original project (so not just by Python), then
+consider changing the clientId to your own Discord application.
 
 =================
   (2) Main work

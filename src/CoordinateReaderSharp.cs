@@ -23,6 +23,7 @@ namespace MinecraftProximity
         int requests;
         long measureEnd;
         TimeSpan measureDur;
+        bool doMeasure;
 
         TimeSpan calibrateTimeout;
         long nextAllowedCalibrate;
@@ -45,14 +46,18 @@ namespace MinecraftProximity
             screen = -1;
             bounds = new Rectangle(0, 0, 1920, 1080);
 
-            calibrateTimeout = TimeSpan.FromSeconds(10);
+            calibrateTimeout = Program.configFile.GetUpdateRate("coordinatesreader_calibrate", true).baseInterval;//TimeSpan.FromSeconds(10);
             nextAllowedCalibrate = Environment.TickCount64;
 
             nextNotCalibratedWarning = Environment.TickCount64;
-            notCalibratedWarningTimeout = TimeSpan.FromSeconds(15);
+            //notCalibratedWarningTimeout = TimeSpan.FromSeconds(15);
+            notCalibratedWarningTimeout = Program.configFile.GetUpdateRate("coordinatesreader_notCalibratedWarning", true).baseInterval;
 
             stopwatch = new Stopwatch();
-            measureDur = TimeSpan.FromSeconds(5);
+            
+            measureDur = Program.configFile.GetUpdateRate("coordinatesreader_performanceStats", false).baseInterval;
+            doMeasure = measureDur.TotalSeconds > 0.0f;
+
             measureStart = Environment.TickCount64;
             measureEnd = measureStart + (long)measureDur.TotalMilliseconds;
             requests = 0;
@@ -93,12 +98,12 @@ namespace MinecraftProximity
 
         public async Task<Coords?> GetCoords()
         {
-            if (Environment.TickCount64 > measureEnd)
+            if (doMeasure && Environment.TickCount64 > measureEnd)
             {
                 measureEnd = Environment.TickCount64;
 
                 float durMs = (float)stopwatch.ElapsedMilliseconds / Math.Max(1, requests);
-                //Log.Information("[CoordinateReader] Coords getting takes {DurMs:F2} ms on average ({Req} requests completed)", durMs, requests);
+                Log.Information("[CoordinateReader] Coords getting takes {DurMs:F2} ms on average ({Req} requests completed)", durMs, requests);
 
                 stopwatch.Reset();
                 requests = 0;

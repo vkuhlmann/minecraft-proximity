@@ -54,7 +54,7 @@ class Diagram {
             this.el.setAttribute("transform", `translate(${x} ${y})`);
         };
 
-        this.naturalTileSize = 80;
+        this.naturalTileSize = 40;
         this.zoom = 1.0;
         this.tileSize = this.naturalTileSize * this.zoom;
 
@@ -326,7 +326,7 @@ class Diagram {
 
     resetView() {
         this.setZoom(1.0);
-        this.setPanOffset(0.0, 0.0);
+        this.setPanOffset(-10, -10);
     }
 
     updateViewSize() {
@@ -341,7 +341,7 @@ class Diagram {
                 that.updateViewSize();
             };
         } else {
-            this.el.setAttribute("viewBox", `0 0 ${this.naturalTileSize * this.width} ${this.naturalTileSize * this.height}`);
+            //this.el.setAttribute("viewBox", `0 0 ${this.naturalTileSize * this.width} ${this.naturalTileSize * this.height}`);
         }
         if (resizeController != null)
             resizeController.updateResizeFrame();

@@ -1,39 +1,40 @@
 "use strict";
 
-let colorMapEntry = document.createElement("template");
-colorMapEntry.innerHTML = `
-<div class="colormapper-entry">
-    <div class="mapping-color-holder">
-        <input type="color" data-binding="color" id="mappingColor" name="mappingColor" value="#ff0000">
+let playerlistEntry = document.createElement("template");
+playerlistEntry.innerHTML = `
+<div class="playerlist-entry">
+    <div class="playerlist-main">
+        <div class="mapping-color-holder">
+            <input type="color" data-binding="color" id="mappingColor" name="mappingColor" value="#ff0000">
+        </div>
+        <div class="mapping-details" style="flex-flow:column;">
+            <input type="text" class="form-control" data-binding="name" style="flex:1 1 2ch;" />
+        </div>
     </div>
-    <div class="mapping-details">
-        <input type="text" class="form-control" data-binding="coefficient" style="flex:1 1 2ch;" />
+    <div data-binding="status">
+        Status unknown
     </div>
 </div>
 `;
 
-function setBinding(el, bindName, bindValue) {
-    for (let element of $(`[data-binding=\"${bindName}\"]`, el)) {
-        element.innerText = bindValue;
-    }
-}
-
-class ColorMapperEntry {
+class PlayerlistEntry {
     constructor(el, parent, desc) {
         this.el = el;
         this.parent = parent;
         this.color = { value: desc.color || "rgb(255, 0, 0)" };
-        this.coefficient = desc["coefficient"] ?? 1.0;
-        this.paletteColorID = desc["id"];
+        this.name = desc["name"] ?? "Unknown";
+        this.id = desc["id"];
         this.bindings = {};
+        //console.log(desc);
+        this.status = desc["status"] ?? "Status unknown";
 
         //setBinding(el, "label", `${label}`);
         bindElements(el, [this]);
     }
 
     static Create(parent, desc) {
-        let el = colorMapEntry.content.children[0].cloneNode(true);
-        return new ColorMapperEntry(el, parent, desc);
+        let el = playerlistEntry.content.children[0].cloneNode(true);
+        return new PlayerlistEntry(el, parent, desc);
     }
 
     setColor(color) {
@@ -43,33 +44,41 @@ class ColorMapperEntry {
         this.color.value = color;
         //$("[data-binding=centerpoint]", obj.el)[0].style.fill = obj.color;
         updateBinding(this, "color");
-        this.parent.toColor[this.paletteColorID] = this.color.value;
-        updateSVGDisplay();
+        this.parent.toColor[this.id] = this.color.value;
+        //updateSVGDisplay();
         colorselector.update();
 
         delete this.color.suppressSet;
     };
 
-    setCoefficient(coefficient) {
-        coefficient = parseFloat(coefficient)
-        if (isNaN(coefficient))
-            return;
-
-        this.coefficient = coefficient;
+    setName(name) {
+        this.name = name;
         //$("[data-binding=centerpoint]", obj.el)[0].style.fill = obj.color;
-        updateBinding(this, "coefficient");
-        this.parent.toCoefficient[this.paletteColorID] = this.coefficient;
-        onChanged();
+        updateBinding(this, "name");
+        this.parent.toName[this.id] = this.name;
+        //onChanged();
+    }
+
+    setStatus(status) {
+        this.status = status;
+        updateBinding(this, "status");
+    }
+
+    onDestroy() {
+        let pickr = this.color.pickr;
+        
+        pickr.destroyAndRemove();
+        this.color.pickr = null;
     }
 }
 
-class Mapper {
+class Playerlist {
     constructor(el, onUpdate) {
         this.el = el;
         this.el.classList.add("colormapper");
         this.onUpdate = onUpdate;
         this.toColor = {};
-        this.toCoefficient = {};
+        this.toName = {};
         this.orderedIds = [];
         this.nextId = 0;
 
@@ -80,11 +89,20 @@ class Mapper {
         this.add({ color: "green", value: "BB" });
     }
 
+    setOutOfDate() {
+        for (let entry of this.items) {
+            entry.setStatus("Unknown");
+        }
+    }
+
     getNextId() {
         return this.nextId++;
     }
 
     clear() {
+        for (let a of this.items) {
+            a.onDestroy();
+        }
         this.items = [];
         this.el.innerHTML = "";
     }
@@ -92,7 +110,7 @@ class Mapper {
     registerNew(desc) {
         let newId = this.getNextId();
         this.toColor[newId] = desc.color;
-        this.toCoefficient[newId] = desc.coefficient ?? 1.0;
+        this.toName[newId] = desc.name ?? "Unknown";
         this.orderedIds.push(newId);
         this.update();
         colorselector.update();
@@ -111,7 +129,7 @@ class Mapper {
         this.clear();
         let i = 0;
         for (let id of this.orderedIds) {
-            this.add({ color: this.toColor[id], value: `${id}`, "id": id, "coefficient": this.toCoefficient[id] });
+            this.add({ color: this.toColor[id], value: `${id}`, "id": id, "name": this.toName[id] });
             i += 1;
         }
     }
@@ -129,8 +147,9 @@ class Mapper {
     add(desc) {
         if (!isNaN(desc.id))
             this.nextId = Math.max(this.nextId, desc.id + 1);
-        let entry = ColorMapperEntry.Create(this, desc);
+        let entry = PlayerlistEntry.Create(this, desc);
         this.items.push(entry);
         this.el.appendChild(entry.el);
     }
 }
+

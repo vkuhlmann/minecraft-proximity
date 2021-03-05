@@ -25,6 +25,9 @@ namespace MinecraftProximity
         public string displayName;
 
         public Coords? coords;
+        public long coordsTimestamp;
+        public long coordsRateMeasureCount;
+        public float coordsRate;
 
         public dynamic pythonPlayer;
 
@@ -33,9 +36,12 @@ namespace MinecraftProximity
             this.userId = userId;
             this.discordUsername = discordUsername;
             this.discordDiscriminator = discordDiscriminator;
-            this.displayName = discordUsername;
+            displayName = discordUsername;
 
             coords = null;
+            coordsTimestamp = 0;
+            coordsRate = 0.0f;
+            coordsRateMeasureCount = 0;
             pythonPlayer = null;
         }
     }
@@ -43,6 +49,7 @@ namespace MinecraftProximity
     public class LogicServer
     {
         Dictionary<long, ServerPlayer> playersMap;
+        //Dictionary<long, Coords?> playersCoords;
 
         readonly ConcurrentQueue<List<ServerPlayer>> playersStores;
         readonly ConcurrentQueue<VolumesMatrix> volumesStores;
@@ -63,10 +70,17 @@ namespace MinecraftProximity
 
         DelegateSendMessageHandler sendMessageHandler;
 
+        long coordsRateMeasureStart;
+        TimeSpan coordsRateMeasureDur;
+        long coordsRateMeasureDurMs;
+
         public LogicServer(VoiceLobby voiceLobby, Instance instance)
         {
             isSettingMap = false;
             this.instance = instance;
+            //coordsRateMeasureDur = TimeSpan.FromSeconds(2);
+            coordsRateMeasureDur = Program.configFile.GetUpdateRate("server_coordinatesRate_measure", true).baseInterval;
+            coordsRateMeasureDurMs = (long)coordsRateMeasureDur.TotalMilliseconds;
 
             Log.Information("[Server] Initializing server...");
             this.voiceLobby = voiceLobby;
@@ -75,7 +89,7 @@ namespace MinecraftProximity
             playersStores = new ConcurrentQueue<List<ServerPlayer>>();
             volumesStores = new ConcurrentQueue<VolumesMatrix>();
 
-            calculateVolumesProfiler = new RepeatProfiler(TimeSpan.FromSeconds(20),
+            calculateVolumesProfiler = new RepeatProfiler(Program.configFile.GetUpdateRate("server_calculate_performanceStats", false).baseInterval,
                 (RepeatProfiler.Result result) =>
                 {
                     Log.Information("[Server] Calculate volumes takes {DurMs:F2} ms on average ({Req} requests completed)", result.durMs, result.handledCount);
@@ -245,15 +259,21 @@ namespace MinecraftProximity
 
         private void VoiceLobby_onMemberConnect(long lobbyId, long userId)
         {
-            instance.Queue("OnUserJoin", () =>
-            {
-                OnUserJoin(userId);
-                return null;
-            });
+            //instance.Queue("OnUserJoin", () =>
+            //{
+            //    OnUserJoin(userId);
+            //    return null;
+            //});
         }
 
         private void OnUserJoin(long userId)
         {
+            if (playersMap.ContainsKey(userId))
+            {
+                Log.Information("Received join request from user who is already registered!");
+                return;
+            }
+
             Discord.User user = voiceLobby.GetMember(userId);
             if (user.Username == null)
                 return;
@@ -294,6 +314,18 @@ namespace MinecraftProximity
 
             switch (type)
             {
+                case "join":
+                {
+                    Log.Information("Received network join from {UserId}", sender);
+
+                    instance.Queue("OnUserJoin", () =>
+                    {
+                        OnUserJoin(sender);
+                        return null;
+                    });
+                }
+                break;
+
                 case "updateCoords":
                 {
                     long userId = jObject["userId"].Value<long>();
@@ -304,6 +336,8 @@ namespace MinecraftProximity
                         float z = jObject["z"].Value<float>();
 
                         pl.coords = new Coords(x, y, z);
+                        pl.coordsTimestamp = Environment.TickCount64;
+                        pl.coordsRateMeasureCount++;
                     }
                     else
                     {
@@ -500,6 +534,35 @@ namespace MinecraftProximity
 
         public async Task<VolumesMatrix> CalculateVolumes()
         {
+            bool ratesUpdated = false;
+
+            if (Environment.TickCount64 >= coordsRateMeasureStart + coordsRateMeasureDurMs)
+            {
+                foreach (ServerPlayer pl in playersMap.Values)
+                {
+                    pl.coordsRate = pl.coordsRateMeasureCount / (coordsRateMeasureDurMs / 1000.0f);
+                    pl.coordsRateMeasureCount = 0;
+                }
+
+                ratesUpdated = true;
+                coordsRateMeasureStart = Environment.TickCount64;
+            }
+
+            if (ratesUpdated)
+            {
+                using (Py.GIL())
+                {
+                    foreach (ServerPlayer pl in playersMap.Values)
+                    {
+                        dynamic reprPl = pl.pythonPlayer;
+                        if (reprPl == null)
+                            continue;
+                        reprPl.set_coords_rate(pl.coordsRate);
+                    }
+                    logicServerPy.on_coords_rates_updated();
+                }
+            }
+
             List<ServerPlayer> playersStore;
             if (!playersStores.TryDequeue(out playersStore))
                 playersStore = new List<ServerPlayer>();
@@ -532,7 +595,12 @@ namespace MinecraftProximity
                             continue;
 
                         if (pl.coords.HasValue)
-                            reprPl.set_position(pl.coords.Value.x, pl.coords.Value.y, pl.coords.Value.z);
+                        {
+                            if (pl.coordsTimestamp >= Environment.TickCount64 - 2000)
+                                reprPl.set_position(pl.coords.Value.x, pl.coords.Value.y, pl.coords.Value.z);
+                            else
+                                reprPl.on_position_unknown();
+                        }
                     }
 
                     //IEnumerable<ServerPlayer> players = playersMap.Values;
@@ -600,12 +668,13 @@ namespace MinecraftProximity
             {
                 Log.Information("[Server] Starting server loop");
                 long ticks = Environment.TickCount64;
-                TimeSpan sendInterval = TimeSpan.FromMilliseconds(1000 / 10);
+                //TimeSpan sendInterval = TimeSpan.FromMilliseconds(1000 / 10);
+                TimeSpan sendInterval = Program.configFile.GetUpdateRate("server_calculate", false).baseInterval;
                 long sendIntervalTicks = (long)sendInterval.TotalMilliseconds;
 
                 TimeSpan minDelay = TimeSpan.FromMilliseconds(5);
 
-                RepeatProfiler stats = new RepeatProfiler(TimeSpan.FromSeconds(20),
+                RepeatProfiler stats = new RepeatProfiler(Program.configFile.GetUpdateRate("server_calculate_performanceStats", false).baseInterval,//TimeSpan.FromSeconds(20),
                     (RepeatProfiler.Result result) =>
                     {
                         // Calculate volumes takes {DurMs:F2} ms on average ({Req} requests completed)", result.durMs, result.handledCount);
@@ -663,12 +732,19 @@ namespace MinecraftProximity
                                     //foreach ((long userId, float volume) in Program.server)
                                     foreach (ServerPlayer pl in playersMap.Values)
                                     {
+                                        string plStatus = "Status unknown";
+                                        if (pl.coordsTimestamp < Environment.TickCount64 - 1000)
+                                            plStatus = "Coords unknown";
+                                        else
+                                            plStatus = $"Coords: {pl.coordsRate:F2} u/s";
+
                                         playersData.Add(JObject.FromObject(new
                                         {
                                             name = pl.displayName,
                                             x = pl.coords?.x ?? 0.0f,
                                             y = pl.coords?.y ?? 0.0f,
-                                            z = pl.coords?.z ?? 0.0f
+                                            z = pl.coords?.z ?? 0.0f,
+                                            status = plStatus
                                         }));
                                     }
 

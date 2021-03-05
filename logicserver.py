@@ -52,8 +52,11 @@ class Obscuration:
 
 # Do the setup. The returned object needs to implement a number of methods.
 # See the implementation of LogicServer for which they are.
+
+
 def create_server(send_message_handler):
     return LogicServer(send_message_handler)
+
 
 class Player:
     def __init__(self, di, server):
@@ -64,9 +67,16 @@ class Player:
         self.discordDiscriminator = di["discordDiscriminator"]
         self.displayName = di["displayName"]
         self.server = server
+        self.coords_rate = 0.0
 
     def set_position(self, x, y, z):
         self.pos = np.array([x, y, z])
+
+    def on_position_unknown(self):
+        self.pos = None
+
+    def set_coords_rate(self, rate):
+        self.coords_rate = rate
 
 
 class LogicServer:
@@ -81,8 +91,11 @@ class LogicServer:
         self.allow_updatemap_remote = True
         self.players = []
         self.map = None
+        self.params = {
+            "proximityEnabled": True
+        }
 
-        self.positions = {}
+        #self.positions = {}
 
     # Return one of:
     #   False: the command was not handled (unknown command)
@@ -94,7 +107,8 @@ class LogicServer:
         resolve = {
             "updatemap": self.on_updatemap,
             "webui": self.on_webui,
-            "sendmap": self.on_sendmap
+            "sendmap": self.on_sendmap,
+            "setParams": self.on_setparams
         }
         if msgType in resolve:
             return resolve[msgType](msg, sender)
@@ -108,13 +122,29 @@ class LogicServer:
             return [{"type": "webui", "data": r} for r in res]
         return res
 
+    def on_setparams(self, msg, sender):
+        for key in msg["data"]:
+            if key not in self.params:
+                print(f"[Server > Python] Unknown key {key}")
+                continue
+            self.params[key] = msg["data"][key]
+
+        broadcastMessage = {
+            "type": "paramsUpdated",
+            "data": self.params
+        }
+
+        self.broadcast({
+            "type": "paramsUpdated",
+            "data": self.params
+        })
+
     def on_sendmap(self, msg, sender):
         if self.map != None:
             return({
                 "type": "updatemap",
                 "data": self.map
             })
-
 
     def on_updatemap(self, msg, sender):
         if not self.allow_updatemap_remote and not sender["isLocal"]:
@@ -135,6 +165,9 @@ class LogicServer:
         })
 
         print(f"[Server > Python] Updated map")
+
+    def on_coords_rates_updated(self):
+        pass
 
     def broadcast(self, msg):
         for pl in self.players:
@@ -160,8 +193,8 @@ class LogicServer:
         # for obsc in self.obscurations:
         #     print(f"{obsc.lowCorner}, {obsc.highCorner}, {obsc.transmissionCoeff}")
 
-
     # Return: something which has a set_position method
+
     def on_join(self, di):
         pl = Player(di, self)
         self.players += [pl]
@@ -192,6 +225,7 @@ class LogicServer:
 
         if cmdName in commands:
             reply = []
+
             def outp(line):
                 nonlocal reply
                 reply += [line]
@@ -213,14 +247,17 @@ class LogicServer:
             outp(f"You didn't supply an argument.")
 
     def get_volume(self, base, oth):
+        if not self.params["proximityEnabled"]:
+            return 1.0
+
         basePos = base.pos
         othPos = oth.pos
 
-        if base.discordUsername not in self.positions:
-            self.positions[base.discordUsername] = np.array([0, 0, 0])
+        # if base.discordUsername not in self.positions:
+        #     self.positions[base.discordUsername] = np.array([0, 0, 0])
 
-        if basePos is not None:
-            self.positions[base.discordUsername] = basePos
+        # if basePos is not None:
+        #     self.positions[base.discordUsername] = basePos
 
         if basePos is None or othPos is None:
             return 1.0

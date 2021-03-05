@@ -47,7 +47,8 @@ namespace MinecraftProximity
             { "broadcast", DoBroadcastCommand },
             { "screen", DoScreenCommand },
             { "overlay", DoOverlayCommand },
-            { "webui", DoWebUICommand }
+            { "webui", DoWebUICommand },
+            { "dump", DoDumpCommand }
         };
 
         public static Dictionary<string, string> commandAliases = new Dictionary<string, string>
@@ -67,6 +68,18 @@ namespace MinecraftProximity
             Program.instance.SignalStop();
             //Program.isQuitRequested = true;
             await Task.CompletedTask;
+        }
+
+        static Task DoDumpCommand(string argument)
+        {
+            if (argument != "")
+            {
+                Console.WriteLine("Dump command does not take any argument.");
+                return Task.CompletedTask;
+            }
+
+            Program.discord.ForceDump();
+            return Task.CompletedTask;
         }
 
         static async Task DoCreateLobbyCommand(string argument)

@@ -139,7 +139,7 @@ function bindContent(el, context, targetName, listeners, applyListeners = true) 
                 update: () => el.innerHTML = context[targetName]
             });
         } else {
-            console.log("WARN: Missing out on bindings!");
+            console.log(`WARN: Missing out on bindings!`);
         }
         return true;
     }

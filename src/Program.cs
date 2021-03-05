@@ -37,7 +37,8 @@ namespace MinecraftProximity
         public static string exeFile;
         public static DirectoryInfo pythonDir;
 
-        public static ConcurrentQueue<Task> onDiscordThread;
+        //public static ConcurrentQueue<Task> onDiscordThread;
+        public static ConcurrentQueue<Task> gracefulLobbyEnds;
 
         static string locateExeFile()
         {
@@ -70,9 +71,10 @@ namespace MinecraftProximity
 
         static async Task RunAsync(string[] args)
         {
-            Console.Title = "Minecraft Proximity - Version 1.0.0";
+            Console.Title = "Minecraft Proximity - Version 1.0.0 + Development";
             instance = null;
-            onDiscordThread = new ConcurrentQueue<Task>();
+            gracefulLobbyEnds = new ConcurrentQueue<Task>();
+            //onDiscordThread = new ConcurrentQueue<Task>();
 
             assemblyDir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);
 
@@ -135,6 +137,9 @@ namespace MinecraftProximity
                         Log.Warning($"Discord: {message}");
                     else
                         Log.Information($"Discord ({level}): {message}");
+
+                    if (level == Discord.LogLevel.Error || level == Discord.LogLevel.Warn)
+                        DebugLog.Dump(true);
                 });
 
                 var activityManager = discord.GetActivityManager();
@@ -265,7 +270,17 @@ namespace MinecraftProximity
 
                     if (nextJoinSecret == null)
                         break;
+                    //Log.Information("Waiting 7 seconds because of Discord rate limits...");
+                    //Thread.Sleep(7000);
                 }
+
+                isQuitting = true;
+                //if (gracefulLobbyEnds.Count > 0)
+                //{
+                //    Console.WriteLine("Waiting till lobbies end gracefully...");
+                //    while (gracefulLobbyEnds.TryDequeue(out Task t))
+                //        await t;
+                //}
             }
             catch (Exception ex)
             {

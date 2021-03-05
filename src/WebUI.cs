@@ -129,8 +129,24 @@ namespace MinecraftProximity
             } else if (type == "updateplayers")
             {
                 UpdatePlayers(data["data"].ToString());
+            } else
+            {
+                OnMessage(data);
             }
+        }
 
+        public void OnMessage(JObject msg)
+        {
+            string msgString = msg.ToString();
+
+            using (Py.GIL())
+            {
+                dynamic msgPy;
+                msgPy = jsonModule.loads(msgString);
+                if (module == null)
+                    return;
+                module.on_message(msgPy);
+            }
         }
 
         public void SendUpdate(string data)

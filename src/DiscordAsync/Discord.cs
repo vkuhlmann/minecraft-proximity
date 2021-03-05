@@ -22,6 +22,9 @@ namespace MinecraftProximity.DiscordAsync
         private Exception exception;
         private object resultLock;
         private bool isShutdownRequested;
+        public long startedTimestamp { get; private set; }
+        public int callbackCycle { get; private set; }
+        public int flushNetworkCycle { get; set; }
 
         public LobbyManager LobbyManager { get; private set; }
         public VoiceManager VoiceManager { get; private set; }
@@ -53,6 +56,9 @@ namespace MinecraftProximity.DiscordAsync
             isShutdownRequested = false;
 
             this.isUseAutoFlush = isUseAutoFlush;
+
+            callbackCycle = 0;
+            flushNetworkCycle = 0;
 
 
             thread = new Thread(() => DoThread(clientId, flags, out exception));
@@ -126,6 +132,7 @@ namespace MinecraftProximity.DiscordAsync
                 UserManager = new UserManager(this, internalDiscord.GetUserManager());
                 OverlayManager = new OverlayManager(this, internalDiscord.GetOverlayManager());
 
+                startedTimestamp = Environment.TickCount64;
             }
             catch (Exception ex)
             {
@@ -180,6 +187,11 @@ namespace MinecraftProximity.DiscordAsync
             {
                 try
                 {
+                    DebugLog.Log(new DebugLog.Entry
+                    {
+                        op = DebugLog.Operation.DISPOSE
+                    });
+
                     internalDiscord.Dispose();
                 }
                 catch (Exception ex)
@@ -200,12 +212,28 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
+                    DebugLog.Log(new DebugLog.Entry
+                    {
+                        op = DebugLog.Operation.RUN_CALLBACKS
+                    });
                     internalDiscord.RunCallbacks();
+                    callbackCycle++;
                     taskCompletionSource.SetResult(true);
                 },
                 sendError = e => taskCompletionSource.SetException(e)
             });
             return taskCompletionSource.Task;
+        }
+
+        public void ForceDump()
+        {
+            Queue(new Request
+            {
+                action = () =>
+                {
+                    DebugLog.Dump(false);
+                }
+            });
         }
 
         public void Queue(Request request)
@@ -226,7 +254,12 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
+                    DebugLog.Log(new DebugLog.Entry
+                    {
+                        op = DebugLog.Operation.FLUSH_NETWORK
+                    });
                     LobbyManager.FlushNetwork();
+                    flushNetworkCycle++;
                     taskCompletionSource.TrySetResult(true);
                 },
                 sendError = ex =>
@@ -271,7 +304,6 @@ namespace MinecraftProximity.DiscordAsync
                     break;
             }
         }
-
 
     }
 }

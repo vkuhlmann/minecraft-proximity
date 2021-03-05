@@ -33,6 +33,9 @@
     <script src="colorselection.js"></script>
     <script src="panAndZoom.js"></script>
     <script src="resizing.js"></script>
+    <script src="websocket.js"></script>
+    <script src="playerlist.js"></script>
+    <script src="servertab.js"></script>
     <script src="layout.js"></script>
 
     <!-- Pickr themes -->
@@ -205,47 +208,75 @@
 
     <div class="container-fluid">
         <div class="panels-container" id="panelsContainer">
-            <div id="pixelartPanel" class="pixelart-panel">
-                <svg style="width:100%;height:100%;touch-action:none;" id="pixelartSvg"
-                    preserveAspectRatio="xMinYMid meet" class="pannable-diagram">
-                    <defs>
-                        <g id="template-pointmarker">
-                            <circle cx="0" cy="0" r="5" data-id="centerpoint" fill="black" stroke="black" style="stroke-width:2;" />
-                            <text data-id="plainLabel" data-binding="label" x="0" y="-10"
-                                style="font:normal 18px sans-serif;text-anchor:middle;">Element
-                                a</text>
-                            <!--<g data-id="formattedLabel">
+            <div id="pixelartPanel" class="pixelart-panel" style="display:flex;flex-flow:column nowrap;">
+                <!-- https://getbootstrap.com/docs/4.0/components/navs/ -->
+                <ul class="nav nav-tabs" id="myTab" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="home-tab" data-toggle="tab" href="#home" role="tab"
+                            aria-controls="home" aria-selected="true">Map</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="server-tab" data-toggle="tab" href="#server" role="tab"
+                            aria-controls="server" aria-selected="false">Server</a>
+                    </li>
+                </ul>
+                <div class="tab-content" id="myTabContent" style="width:100%;flex:1 1 auto;display:flex;border-bottom:3px solid #ddd;padding-bottom:5px;">
+                    <div class="tab-pane fade show active maptab" id="home" role="tabpanel" style="flex:1 1 auto;position:relative;background-color:#eee" aria-labelledby="home-tab">
+                        <svg style="width:100%;height:100%;touch-action:none;" id="pixelartSvg"
+                            preserveAspectRatio="xMinYMid meet" class="pannable-diagram">
+                            <defs>
+                                <g id="template-pointmarker">
+                                    <circle cx="0" cy="0" r="5" data-id="centerpoint" fill="black" stroke="black"
+                                        style="stroke-width:2;" />
+                                    <text data-id="plainLabel" data-binding="label" x="0" y="-10"
+                                        style="font:normal 18px sans-serif;text-anchor:middle;">Element
+                                        a</text>
+                                    <!--<g data-id="formattedLabel">
 
                             </g>-->
-                        </g>
-                    </defs>
-
-                    <!--<rect id="svgBackground" style="width:100%;height:100%;fill:#ddd;" />-->
-                    <!--<svg width="100%" height="100%" preserveAspectRatio="xMinYMid meet" id="drawingContainerSvg"
-                        style="touch-action:none;" class="pannable-diagram">-->
-                    <g id="svgContent">
-                        <g id="pannableContent">
-                            <g id="svgPixels">
-
-                            </g>
-                            <g id="resizeFrame" style="visibility:hidden;">
-                                <rect id="resizeBox" x="0" y="0" width="100" height="100" fill="none"
-                                    stroke="hsl(122, 50%, 50%)" style="stroke-width:12.5px;" rx="12.5" ry="12.5" />
-                                <rect id="resizeBox2" x="0" y="0" width="100" height="100" fill="none"
-                                    stroke="hsl(122, 50%, 32%)" style="stroke-width:5px;" rx="12.5" ry="12.5" />
-                                <g id="handleRight">
-                                    <circle r="15" cx="0" cy="0" fill="hsl(122, 100%, 47%)" style="cursor:ew-resize;" />
                                 </g>
-                                <g id="handleBottom">
-                                    <circle r="15" cx="0" cy="0" fill="hsl(122, 100%, 47%)" style="cursor:ns-resize;" />
-                                </g>                                
+                            </defs>
+
+                            <!--<rect id="svgBackground" style="width:100%;height:100%;fill:#ddd;" />-->
+                            <!--<svg width="100%" height="100%" preserveAspectRatio="xMinYMid meet" id="drawingContainerSvg"
+                        style="touch-action:none;" class="pannable-diagram">-->
+                            <g id="svgContent">
+                                <g id="pannableContent">
+                                    <g id="svgPixels">
+
+                                    </g>
+                                    <g id="resizeFrame" style="visibility:hidden;">
+                                        <rect id="resizeBox" x="0" y="0" width="100" height="100" fill="none"
+                                            stroke="hsl(122, 50%, 50%)" style="stroke-width:12.5px;" rx="12.5"
+                                            ry="12.5" />
+                                        <rect id="resizeBox2" x="0" y="0" width="100" height="100" fill="none"
+                                            stroke="hsl(122, 50%, 32%)" style="stroke-width:5px;" rx="12.5" ry="12.5" />
+                                        <g id="handleRight">
+                                            <circle r="15" cx="0" cy="0" fill="hsl(122, 100%, 47%)"
+                                                style="cursor:ew-resize;" />
+                                        </g>
+                                        <g id="handleBottom">
+                                            <circle r="15" cx="0" cy="0" fill="hsl(122, 100%, 47%)"
+                                                style="cursor:ns-resize;" />
+                                        </g>
+                                    </g>
+                                </g>
+                                <circle cx="0" cy="0" style="visibility:hidden;" r="30" fill="red"
+                                    id="pointerVisual0" />
+                                <circle cx="0" cy="0" style="visibility:hidden;" r="30" fill="green"
+                                    id="pointerVisual1" />
                             </g>
-                        </g>
-                        <circle cx="0" cy="0" style="visibility:hidden;" r="30" fill="red" id="pointerVisual0" />
-                        <circle cx="0" cy="0" style="visibility:hidden;" r="30" fill="green" id="pointerVisual1" />
-                    </g>
-                    <!--</svg>-->
-                </svg>
+                            <!--</svg>-->
+                        </svg>
+                    </div>
+                    <div class="tab-pane fade" id="server" role="tabpanel" aria-labelledby="server-tab" style="padding:10px;">
+                        <h2>Server controls</h2>
+
+                        To be added!
+                    </div>
+                </div>
+
+
                 <!-- <div id="splitter" class="splitter">
                 </div> -->
             </div>
@@ -253,7 +284,31 @@
                 <div></div>
             </div>
             <div id="configurationPanel" class="configuration-panel">
-                <div style="flex:1 0 auto;display:flex;flex-flow:column nowrap;">
+                <div id="mapXZ" class="mapXZ">
+                    <div class="flex:1 1 auto;display:flex;">
+                        <input type="text" class="form-control" data-binding="mapX" id="inputMapX" style="flex:1 1 2ch;"
+                            value="50" />
+                    </div>
+                    <div class="flex:1 1 auto;display:flex;">
+                        <input type="text" class="form-control" data-binding="mapZ" id="inputMapZ" style="flex:1 1 2ch;"
+                            value="-200" />
+                    </div>
+                </div>
+                <div id="quickControls" class="quickControls">
+                    <button type="button" class="btn btn-outline-success" id="globalProximityEnable"
+                        style="display:flex;flex-flow:row nowrap;align-items:center;flex:1 0 auto;">
+                        Enable
+                    </button>
+                    <button type="button" class="btn btn-outline-danger" id="globalProximityDisable"
+                        style="display:flex;flex-flow:row nowrap;align-items:center;flex:1 0 auto;">
+                        Disable
+                    </button>
+                </div>
+                <div id="playerlist" style="flex:1 0 auto;">
+
+                </div>
+
+                <div style="flex:1 0 auto;display:flex;flex-flow:column nowrap;display:none;">
                     <textarea class="form-control" id="outputArea" rows="12" style="flex:1 0 auto;display:block;"
                         readonly="readonly"></textarea>
                     <button type="button" class="button-action" style="flex:0 0 auto;"

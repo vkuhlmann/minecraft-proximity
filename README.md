@@ -1,5 +1,5 @@
 # Minecraft Proximity
-**Bringing proximity chat to Minecraft!**
+**An advanced proximity chat for Minecraft.**
 
 This application reads your Minecraft coordinates from the screen (use HUD from Vanilla Tweaks or provisionally the F3 screen).
 Then, it uses the Discord Game API to set the volumes of you and your party. And then: have fun!
@@ -8,13 +8,13 @@ My local test ramblings uploaded: https://youtu.be/kvT7hmtxVss
 
 "Installation" demonstration: https://youtu.be/FBA8a_hZZQY
 
-_The project is not bug-free. Please contact me if you are experiencing problems._
+_Please contact me if you are experiencing problems._
 
 ***
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG.
 
-This application is still very much in development. I would appreciate any engagement. If you are on the TitanCraft server, you
+This application is still in development. I would appreciate any engagement. If you are on the TitanCraft server, you
 can find me there. Alternatively, send me a mail using the e-mail address which you can find on my GitHub profile page.
 
 Make sure to read LICENSE.txt and LICENSES.txt before using and modifying.

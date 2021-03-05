@@ -239,12 +239,26 @@ namespace MinecraftProximity.DiscordAsync
             return taskCompletionSource.Task.Result;
         }
 
+
+        static long lastConnectAttempt = 0;
+        static TimeSpan minConnectInterval = TimeSpan.FromSeconds(6);
+
         public void ConnectNetwork(long lobbyId)
         {
             discord.Queue(new Discord.Request
             {
                 action = () =>
                 {
+                    long timestamp = Environment.TickCount64;
+                    if (timestamp < lastConnectAttempt + (long)minConnectInterval.TotalMilliseconds)
+                    {
+                        Log.Information("Waiting before connecting network...");
+
+                        Thread.Sleep((int)(lastConnectAttempt + (long)minConnectInterval.TotalMilliseconds - timestamp));
+
+                        Log.Information("Connecting network...");
+                    }
+
                     NetworkLog.Log(new NetworkLog.Entry
                     {
                         op = NetworkLog.Operation.CONNECT_NETWORK,
@@ -252,6 +266,11 @@ namespace MinecraftProximity.DiscordAsync
                     });
 
                     internalLobbyManager.ConnectNetwork(lobbyId);
+                    timestamp = Environment.TickCount64;
+                    if (lastConnectAttempt != 0)
+                        Log.Information("ConnectNetwork interval was roughly {Interval}", timestamp - lastConnectAttempt);
+
+                    lastConnectAttempt = timestamp;
                 }
             });
         }

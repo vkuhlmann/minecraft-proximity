@@ -204,7 +204,7 @@ namespace MinecraftProximity
             //await completionSource.Task;
         }
 
-        public async Task StartDisconnect()
+        public async Task StartDisconnectFull()
         {
             Log.Information("[Party] Disconnecting from lobby {LobbyId}...", lobby.Id);
             await Task.Delay(20);
@@ -230,6 +230,59 @@ namespace MinecraftProximity
             });
         }
 
+        public async Task StartDisconnect()
+        {
+            //Log.Information("[Party] Disconnecting voice.", lobby.Id);
+            await DisconnectVoice();
+
+            Func<Task> act = async () =>
+            {
+                for (int i = 0; i < 30; i++)
+                {
+                    if (Program.isQuitting)
+                        break;
+                    await Task.Delay(100);
+                }
+
+                Log.Information("[Party] Disconnecting from old lobby {LobbyId}...", lobby.Id);
+
+                //Discord.Result result = await lobbyManager.DisconnectVoice(lobby.Id);
+
+                //if (result == Discord.Result.Ok)
+                //    Log.Information("[Party] Voice chat is now disconnected.");
+                //else
+                //    Log.Warning("[Party] Failed to disconnect voice: {Result}.", result);
+
+                if (isNetworkConnected)
+                {
+                    isNetworkConnected = false;
+                    lobbyManager.DisconnectNetwork(lobby.Id);
+                    Log.Information("[Party] DisconnectNetwork requested.");
+                } else
+                {
+                    Log.Information("Not disconnecting: was not connected.");
+                }
+
+                await Task.Delay(50);
+
+
+                //instance.Queue("DisconnectLobby", async () =>
+                //{
+                Discord.Result result = await lobbyManager.DisconnectLobby(lobby.Id);
+
+                if (result != Discord.Result.Ok)
+                {
+                    Log.Warning("[Party] Didn't receive Ok trying to disconnect from lobby. Result was {Result}.", result);
+                    return;
+                }
+
+                Log.Information("[Party] Disconnected from lobby {LobbyId}.", lobby.Id);
+                //});
+            };
+
+            Program.gracefulLobbyEnds.Enqueue(act());
+        }
+
         void DoInit(bool isCreating)
         {
             users = new Dictionary<long, Discord.User>();
@@ -252,10 +305,12 @@ namespace MinecraftProximity
             //});
 
             //Log.Information("[Party] Connecting to network. (Lobby {LobbyId})", lobby.Id);
-            lobbyManager.ConnectNetwork(lobby.Id);
 
             instance.Queue("OpenNetwork", () =>
             {
+                Task.Delay(1000);
+                lobbyManager.ConnectNetwork(lobby.Id);
+
                 if (isCreating)
                 {
 
@@ -288,7 +343,7 @@ namespace MinecraftProximity
                             continue;
 
                         // DEBUG NETWORK COMMENT ME OUT
-                        SendNetworkJson(user.Id, 2, helloMsg);
+                        //SendNetworkJson(user.Id, 2, helloMsg);
                     };
 
 

@@ -37,7 +37,8 @@ namespace MinecraftProximity
         public static string exeFile;
         public static DirectoryInfo pythonDir;
 
-        public static ConcurrentQueue<Task> onDiscordThread;
+        //public static ConcurrentQueue<Task> onDiscordThread;
+        public static ConcurrentQueue<Task> gracefulLobbyEnds;
 
         static string locateExeFile()
         {
@@ -72,7 +73,8 @@ namespace MinecraftProximity
         {
             Console.Title = "Minecraft Proximity - Version 1.0.0 + Development";
             instance = null;
-            onDiscordThread = new ConcurrentQueue<Task>();
+            gracefulLobbyEnds = new ConcurrentQueue<Task>();
+            //onDiscordThread = new ConcurrentQueue<Task>();
 
             assemblyDir = Directory.GetParent(System.Reflection.Assembly.GetEntryAssembly().Location);
 
@@ -269,6 +271,14 @@ namespace MinecraftProximity
                     if (nextJoinSecret == null)
                         break;
                 }
+
+                isQuitting = true;
+                //if (gracefulLobbyEnds.Count > 0)
+                //{
+                //    Console.WriteLine("Waiting till lobbies end gracefully...");
+                //    while (gracefulLobbyEnds.TryDequeue(out Task t))
+                //        await t;
+                //}
             }
             catch (Exception ex)
             {

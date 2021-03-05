@@ -187,9 +187,9 @@ namespace MinecraftProximity.DiscordAsync
             {
                 try
                 {
-                    NetworkLog.Log(new NetworkLog.Entry
+                    DebugLog.Log(new DebugLog.Entry
                     {
-                        op = NetworkLog.Operation.DISPOSE
+                        op = DebugLog.Operation.DISPOSE
                     });
 
                     internalDiscord.Dispose();
@@ -212,9 +212,9 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
-                    NetworkLog.Log(new NetworkLog.Entry
+                    DebugLog.Log(new DebugLog.Entry
                     {
-                        op = NetworkLog.Operation.RUN_CALLBACKS
+                        op = DebugLog.Operation.RUN_CALLBACKS
                     });
                     internalDiscord.RunCallbacks();
                     callbackCycle++;
@@ -231,7 +231,7 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
-                    NetworkLog.Dump(false);
+                    DebugLog.Dump(false);
                 }
             });
         }
@@ -254,9 +254,9 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
-                    NetworkLog.Log(new NetworkLog.Entry
+                    DebugLog.Log(new DebugLog.Entry
                     {
-                        op = NetworkLog.Operation.FLUSH_NETWORK
+                        op = DebugLog.Operation.FLUSH_NETWORK
                     });
                     LobbyManager.FlushNetwork();
                     flushNetworkCycle++;

@@ -46,6 +46,10 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
+                    DebugLog.Log(new DebugLog.Entry
+                    {
+                        op = DebugLog.Operation.GET_CURRENT_USER
+                    });
                     var ans = internalUserManager.GetCurrentUser();
                     taskCompletionSource.TrySetResult(ans);
                 },

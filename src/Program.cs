@@ -139,7 +139,7 @@ namespace MinecraftProximity
                         Log.Information($"Discord ({level}): {message}");
 
                     if (level == Discord.LogLevel.Error || level == Discord.LogLevel.Warn)
-                        NetworkLog.Dump(true);
+                        DebugLog.Dump(true);
                 });
 
                 var activityManager = discord.GetActivityManager();
@@ -270,6 +270,8 @@ namespace MinecraftProximity
 
                     if (nextJoinSecret == null)
                         break;
+                    //Log.Information("Waiting 7 seconds because of Discord rate limits...");
+                    //Thread.Sleep(7000);
                 }
 
                 isQuitting = true;

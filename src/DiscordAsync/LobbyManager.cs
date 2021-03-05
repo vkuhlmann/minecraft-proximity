@@ -55,9 +55,9 @@ namespace MinecraftProximity.DiscordAsync
         {
             try
             {
-                NetworkLog.Log(new NetworkLog.Entry
+                DebugLog.Log(new DebugLog.Entry
                 {
-                    op = NetworkLog.Operation.RECEIVE_MESSAGE,
+                    op = DebugLog.Operation.RECEIVE_MESSAGE,
                     lobbyId = lobbyId,
                     userId = userId,
                     channelId = channelId
@@ -75,9 +75,9 @@ namespace MinecraftProximity.DiscordAsync
         {
             try
             {
-                NetworkLog.Log(new NetworkLog.Entry
+                DebugLog.Log(new DebugLog.Entry
                 {
-                    op = NetworkLog.Operation.USER_DISCONNECT,
+                    op = DebugLog.Operation.USER_DISCONNECT,
                     lobbyId = lobbyId,
                     userId = userId
                 });
@@ -93,6 +93,13 @@ namespace MinecraftProximity.DiscordAsync
         {
             try
             {
+                DebugLog.Log(new DebugLog.Entry
+                {
+                    op = DebugLog.Operation.ON_MEMBER_UPDATE,
+                    lobbyId = lobbyId,
+                    userId = userId
+                });
+
                 OnMemberUpdate?.Invoke(lobbyId, userId);
             }
             catch (Exception ex)
@@ -105,9 +112,9 @@ namespace MinecraftProximity.DiscordAsync
         {
             try
             {
-                NetworkLog.Log(new NetworkLog.Entry
+                DebugLog.Log(new DebugLog.Entry
                 {
-                    op = NetworkLog.Operation.USER_CONNECT,
+                    op = DebugLog.Operation.USER_CONNECT,
                     lobbyId = lobbyId,
                     userId = userId
                 });
@@ -135,6 +142,12 @@ namespace MinecraftProximity.DiscordAsync
         {
             try
             {
+                DebugLog.Log(new DebugLog.Entry
+                {
+                    op = DebugLog.Operation.ON_LOBBY_UPDATE,
+                    lobbyId = lobbyId
+                });
+
                 OnLobbyUpdate?.Invoke(lobbyId);
             }
             catch (Exception ex)
@@ -151,9 +164,9 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
-                    NetworkLog.Log(new NetworkLog.Entry
+                    DebugLog.Log(new DebugLog.Entry
                     {
-                        op = NetworkLog.Operation.FLUSH_NETWORK
+                        op = DebugLog.Operation.FLUSH_NETWORK
                     });
                     internalLobbyManager.FlushNetwork();
                     discord.flushNetworkCycle++;
@@ -171,16 +184,16 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
-                    NetworkLog.Log(new NetworkLog.Entry
+                    DebugLog.Log(new DebugLog.Entry
                     {
-                        op = NetworkLog.Operation.CONNECT_LOBBY
+                        op = DebugLog.Operation.CONNECT_LOBBY
                     });
 
                     internalLobbyManager.ConnectLobbyWithActivitySecret(activitySecret, (Result result, ref Lobby lobby) =>
                     {
-                        NetworkLog.Log(new NetworkLog.Entry
+                        DebugLog.Log(new DebugLog.Entry
                         {
-                            op = NetworkLog.Operation.CONNECTED_LOBBY,
+                            op = DebugLog.Operation.CONNECTED_LOBBY,
                             lobbyId = lobby.Id
                         });
                         taskCompletionSource.TrySetResult((result, lobby));
@@ -199,17 +212,17 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
-                    NetworkLog.Log(new NetworkLog.Entry
+                    DebugLog.Log(new DebugLog.Entry
                     {
-                        op = NetworkLog.Operation.CONNECT_LOBBY,
+                        op = DebugLog.Operation.CONNECT_LOBBY,
                         lobbyId = lobbyId
                     });
 
                     internalLobbyManager.ConnectLobby(lobbyId, secret, (Result result, ref Lobby lobby) =>
                     {
-                        NetworkLog.Log(new NetworkLog.Entry
+                        DebugLog.Log(new DebugLog.Entry
                         {
-                            op = NetworkLog.Operation.CONNECTED_LOBBY,
+                            op = DebugLog.Operation.CONNECTED_LOBBY,
                             lobbyId = lobby.Id
                         });
                         taskCompletionSource.TrySetResult((result, lobby));
@@ -223,7 +236,14 @@ namespace MinecraftProximity.DiscordAsync
         public string GetLobbyActivitySecret(long lobbyId)
         {
             if (Thread.CurrentThread.ManagedThreadId == discord.ManagedThreadId)
+            {
+                DebugLog.Log(new DebugLog.Entry
+                {
+                    op = DebugLog.Operation.GET_LOBBY_ACTIVITY_SECRET,
+                    lobbyId = lobbyId
+                });
                 return internalLobbyManager.GetLobbyActivitySecret(lobbyId);
+            }
 
             var taskCompletionSource = new TaskCompletionSource<string>();
 
@@ -231,6 +251,12 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
+                    DebugLog.Log(new DebugLog.Entry
+                    {
+                        op = DebugLog.Operation.GET_LOBBY_ACTIVITY_SECRET,
+                        lobbyId = lobbyId
+                    });
+
                     string ans = internalLobbyManager.GetLobbyActivitySecret(lobbyId);
                     taskCompletionSource.TrySetResult(ans);
                 },
@@ -241,7 +267,8 @@ namespace MinecraftProximity.DiscordAsync
 
 
         static long lastConnectAttempt = 0;
-        static TimeSpan minConnectInterval = TimeSpan.FromSeconds(6);
+        // ConnectNetwork has a rate limit of once per 5 seconds.
+        static TimeSpan minConnectInterval = TimeSpan.FromSeconds(7);
 
         public void ConnectNetwork(long lobbyId)
         {
@@ -259,9 +286,9 @@ namespace MinecraftProximity.DiscordAsync
                         Log.Information("Connecting network...");
                     }
 
-                    NetworkLog.Log(new NetworkLog.Entry
+                    DebugLog.Log(new DebugLog.Entry
                     {
-                        op = NetworkLog.Operation.CONNECT_NETWORK,
+                        op = DebugLog.Operation.CONNECT_NETWORK,
                         lobbyId = lobbyId
                     });
 
@@ -283,6 +310,12 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
+                    DebugLog.Log(new DebugLog.Entry
+                    {
+                        op = DebugLog.Operation.CONNECT_VOICE,
+                        lobbyId = lobbyId
+                    });
+
                     internalLobbyManager.ConnectVoice(lobbyId, (Result result) =>
                     {
                         taskCompletionSource.TrySetResult(result);
@@ -301,6 +334,12 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
+                    DebugLog.Log(new DebugLog.Entry
+                    {
+                        op = DebugLog.Operation.DISCONNECT_VOICE,
+                        lobbyId = lobbyId
+                    });
+
                     internalLobbyManager.DisconnectVoice(lobbyId, (Result result) =>
                     {
                         taskCompletionSource.TrySetResult(result);
@@ -319,17 +358,17 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
-                    NetworkLog.Log(new NetworkLog.Entry
+                    DebugLog.Log(new DebugLog.Entry
                     {
-                        op = NetworkLog.Operation.DISCONNECT_LOBBY,
+                        op = DebugLog.Operation.DISCONNECT_LOBBY,
                         lobbyId = lobbyId
                     });
 
                     internalLobbyManager.DisconnectLobby(lobbyId, (Result result) =>
                     {
-                        NetworkLog.Log(new NetworkLog.Entry
+                        DebugLog.Log(new DebugLog.Entry
                         {
-                            op = NetworkLog.Operation.DISCONNECTED_LOBBY,
+                            op = DebugLog.Operation.DISCONNECTED_LOBBY,
                             lobbyId = lobbyId
                         });
                         taskCompletionSource.TrySetResult(result);
@@ -346,9 +385,9 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
-                    NetworkLog.Log(new NetworkLog.Entry
+                    DebugLog.Log(new DebugLog.Entry
                     {
-                        op = NetworkLog.Operation.DISCONNECT_NETWORK,
+                        op = DebugLog.Operation.DISCONNECT_NETWORK,
                         lobbyId = lobbyId
                     });
                     internalLobbyManager.DisconnectNetwork(lobbyId);
@@ -378,7 +417,15 @@ namespace MinecraftProximity.DiscordAsync
         public User GetMemberUser(long lobbyId, long userId)
         {
             if (Thread.CurrentThread.ManagedThreadId == discord.ManagedThreadId)
+            {
+                DebugLog.Log(new DebugLog.Entry
+                {
+                    op = DebugLog.Operation.GET_MEMBER_USER,
+                    lobbyId = lobbyId,
+                    userId = userId
+                });
                 return internalLobbyManager.GetMemberUser(lobbyId, userId);
+            }
 
             var taskCompletionSource = new TaskCompletionSource<User>();
 
@@ -386,6 +433,12 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
+                    DebugLog.Log(new DebugLog.Entry
+                    {
+                        op = DebugLog.Operation.GET_MEMBER_USER,
+                        lobbyId = lobbyId,
+                        userId = userId
+                    });
                     var ans = internalLobbyManager.GetMemberUser(lobbyId, userId);
                     taskCompletionSource.TrySetResult(ans);
                 },
@@ -397,7 +450,15 @@ namespace MinecraftProximity.DiscordAsync
         public int MemberCount(long lobbyId)
         {
             if (Thread.CurrentThread.ManagedThreadId == discord.ManagedThreadId)
+            {
+                DebugLog.Log(new DebugLog.Entry
+                {
+                    op = DebugLog.Operation.MEMBER_COUNT,
+                    lobbyId = lobbyId
+                });
+
                 return internalLobbyManager.MemberCount(lobbyId);
+            }
 
             var taskCompletionSource = new TaskCompletionSource<int>();
 
@@ -405,6 +466,12 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
+                    DebugLog.Log(new DebugLog.Entry
+                    {
+                        op = DebugLog.Operation.MEMBER_COUNT,
+                        lobbyId = lobbyId
+                    });
+
                     var ans = internalLobbyManager.MemberCount(lobbyId);
                     taskCompletionSource.TrySetResult(ans);
                 },
@@ -436,7 +503,14 @@ namespace MinecraftProximity.DiscordAsync
         public string GetLobbyMetadataValue(long lobbyId, string key)
         {
             if (Thread.CurrentThread.ManagedThreadId == discord.ManagedThreadId)
+            {
+                DebugLog.Log(new DebugLog.Entry
+                {
+                    op = DebugLog.Operation.GET_LOBBY_METADATA_VALUE,
+                    lobbyId = lobbyId
+                });
                 return internalLobbyManager.GetLobbyMetadataValue(lobbyId, key);
+            }
 
             var taskCompletionSource = new TaskCompletionSource<string>();
 
@@ -444,6 +518,11 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
+                    DebugLog.Log(new DebugLog.Entry
+                    {
+                        op = DebugLog.Operation.GET_LOBBY_METADATA_VALUE,
+                        lobbyId = lobbyId
+                    });
                     string result = internalLobbyManager.GetLobbyMetadataValue(lobbyId, key);
                     taskCompletionSource.TrySetResult(result);
                 },
@@ -455,7 +534,14 @@ namespace MinecraftProximity.DiscordAsync
         public int LobbyMetadataCount(long lobbyId)
         {
             if (Thread.CurrentThread.ManagedThreadId == discord.ManagedThreadId)
+            {
+                DebugLog.Log(new DebugLog.Entry
+                {
+                    op = DebugLog.Operation.GET_LOBBY_METADATA_COUNT,
+                    lobbyId = lobbyId
+                });
                 return internalLobbyManager.LobbyMetadataCount(lobbyId);
+            }
 
             var taskCompletionSource = new TaskCompletionSource<int>();
 
@@ -463,6 +549,12 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
+                    DebugLog.Log(new DebugLog.Entry
+                    {
+                        op = DebugLog.Operation.GET_LOBBY_METADATA_COUNT,
+                        lobbyId = lobbyId
+                    });
+
                     int result = internalLobbyManager.LobbyMetadataCount(lobbyId);
                     taskCompletionSource.TrySetResult(result);
                 },
@@ -497,9 +589,9 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
-                    NetworkLog.Log(new NetworkLog.Entry
+                    DebugLog.Log(new DebugLog.Entry
                     {
-                        op = NetworkLog.Operation.OPEN_NETWORK_CHANNEL,
+                        op = DebugLog.Operation.OPEN_NETWORK_CHANNEL,
                         lobbyId = lobbyId,
                         channelId = channelId
                     });
@@ -515,9 +607,9 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
-                    NetworkLog.Log(new NetworkLog.Entry
+                    DebugLog.Log(new DebugLog.Entry
                     {
-                        op = NetworkLog.Operation.SEND_MESSAGE,
+                        op = DebugLog.Operation.SEND_MESSAGE,
                         lobbyId = lobbyId,
                         userId = userId,
                         channelId = channelId
@@ -536,8 +628,19 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
+                    DebugLog.Log(new DebugLog.Entry
+                    {
+                        op = DebugLog.Operation.UPDATE_MEMBER,
+                        lobbyId = lobbyId
+                    });
+
                     internalLobbyManager.UpdateMember(lobbyId, userId, transaction, (Result result) =>
                     {
+                        DebugLog.Log(new DebugLog.Entry
+                        {
+                            op = DebugLog.Operation.UPDATED_MEMBER,
+                            lobbyId = lobbyId
+                        });
                         taskCompletionSource.TrySetResult(result);
                     });
                 },
@@ -554,16 +657,16 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
-                    NetworkLog.Log(new NetworkLog.Entry
+                    DebugLog.Log(new DebugLog.Entry
                     {
-                        op = NetworkLog.Operation.CREATE_LOBBY
+                        op = DebugLog.Operation.CREATE_LOBBY
                     });
 
                     internalLobbyManager.CreateLobby(transaction, (Result result, ref Lobby lobby) =>
                     {
-                        NetworkLog.Log(new NetworkLog.Entry
+                        DebugLog.Log(new DebugLog.Entry
                         {
-                            op = NetworkLog.Operation.CREATED_LOBBY,
+                            op = DebugLog.Operation.CREATED_LOBBY,
                             lobbyId = lobby.Id
                         });
 
@@ -586,9 +689,9 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
-                    NetworkLog.Log(new NetworkLog.Entry
+                    DebugLog.Log(new DebugLog.Entry
                     {
-                        op = NetworkLog.Operation.GET_LOBBY_CREATE_TRANSACTION
+                        op = DebugLog.Operation.GET_LOBBY_CREATE_TRANSACTION
                     });
 
                     var result = internalLobbyManager.GetLobbyCreateTransaction();

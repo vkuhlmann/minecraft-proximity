@@ -320,8 +320,7 @@ namespace MinecraftProximity
 
                     instance.Queue("OnUserJoin", () =>
                     {
-                        // DEBUG NETWORK COMMENT ME OUT
-                        //OnUserJoin(sender);
+                        OnUserJoin(sender);
                         return null;
                     });
                 }

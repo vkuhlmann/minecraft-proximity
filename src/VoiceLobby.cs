@@ -169,12 +169,11 @@ namespace MinecraftProximity
                 Log.Warning("[Party] Failed to disconnect voice: {Result}.", result);
         }
 
-        async Task DisconnectNetwork()
+        void DisconnectNetwork()
         {
             if (!isNetworkConnected)
             {
                 Log.Information("Not disconnecting: was not connected.");
-                return;
             }
             isNetworkConnected = false;
 
@@ -185,14 +184,15 @@ namespace MinecraftProximity
             //{
             //Program.lobbyManager.FlushNetwork();
 
-            await Task.Delay(50);
+            lobbyManager.DisconnectNetwork(lobby.Id);
+            Log.Information("[Party] DisconnectNetwork requested.");
 
-            instance.Queue("RequestNetworkDisconnect", async () =>
-            {
-                lobbyManager.DisconnectNetwork(lobby.Id);
-                Log.Information("[Party] DisconnectNetwork requested.");
-                await Task.CompletedTask;
-            });
+            //instance.Queue("RequestNetworkDisconnect", async () =>
+            //{
+            //    lobbyManager.DisconnectNetwork(lobby.Id);
+            //    Log.Information("[Party] DisconnectNetwork requested.");
+            //});
+            //return Task.CompletedTask;
 
             //result = true;
             //}
@@ -204,17 +204,16 @@ namespace MinecraftProximity
             //await completionSource.Task;
         }
 
-        public async Task StartDisconnectFull()
+        public async Task StartDisconnect()
         {
             Log.Information("[Party] Disconnecting from lobby {LobbyId}...", lobby.Id);
-            await Task.Delay(20);
 
             TaskCompletionSource<bool> completionSource = new TaskCompletionSource<bool>();
 
             //instance.Queue("Party_Disconnect", async () =>
             //    {
             await DisconnectVoice();
-            await DisconnectNetwork();
+            DisconnectNetwork();
 
             instance.Queue("DisconnectLobby", async () =>
             {
@@ -230,102 +229,42 @@ namespace MinecraftProximity
             });
         }
 
-        public async Task StartDisconnect()
-        {
-            //Log.Information("[Party] Disconnecting voice.", lobby.Id);
-            await DisconnectVoice();
-
-            Func<Task> act = async () =>
-            {
-                for (int i = 0; i < 30; i++)
-                {
-                    if (Program.isQuitting)
-                        break;
-                    await Task.Delay(100);
-                }
-
-                Log.Information("[Party] Disconnecting from old lobby {LobbyId}...", lobby.Id);
-
-                //Discord.Result result = await lobbyManager.DisconnectVoice(lobby.Id);
-
-                //if (result == Discord.Result.Ok)
-                //    Log.Information("[Party] Voice chat is now disconnected.");
-                //else
-                //    Log.Warning("[Party] Failed to disconnect voice: {Result}.", result);
-
-                if (isNetworkConnected)
-                {
-                    isNetworkConnected = false;
-                    lobbyManager.DisconnectNetwork(lobby.Id);
-                    Log.Information("[Party] DisconnectNetwork requested.");
-                } else
-                {
-                    Log.Information("Not disconnecting: was not connected.");
-                }
-
-                await Task.Delay(50);
-
-
-                //instance.Queue("DisconnectLobby", async () =>
-                //{
-                Discord.Result result = await lobbyManager.DisconnectLobby(lobby.Id);
-
-                if (result != Discord.Result.Ok)
-                {
-                    Log.Warning("[Party] Didn't receive Ok trying to disconnect from lobby. Result was {Result}.", result);
-                    return;
-                }
-
-                Log.Information("[Party] Disconnected from lobby {LobbyId}.", lobby.Id);
-                //});
-            };
-
-            Program.gracefulLobbyEnds.Enqueue(act());
-        }
-
         void DoInit(bool isCreating)
         {
             users = new Dictionary<long, Discord.User>();
             foreach (var us in lobbyManager.GetMemberUsers(lobbyId))
                 users[us.Id] = us;
 
-
-            //// Connect to voice chat.
-            //Task a = lobbyManager.ConnectVoice(lobby.Id).ContinueWith(async res =>
-            //{
-            //    if (await res == Discord.Result.Ok)
-            //        Log.Information("[Party] Voice chat is now connected.");
-            //    else
-            //        Log.Error("[Party] Failed to connect to voice. Result was {Result}. (Lobby {LobbyId})", res, lobby.Id);
-            //});
-
-            //instance.Queue("ConnectVoice", async () =>
-            //{
-            //    await a;
-            //});
-
             //Log.Information("[Party] Connecting to network. (Lobby {LobbyId})", lobby.Id);
+
+            instance.Queue("ConnectVoice", async () =>
+            {
+                await lobbyManager.ConnectVoice(lobby.Id).ContinueWith(async res =>
+                {
+                    if (await res == Discord.Result.Ok)
+                        Log.Information("[Party] Voice chat is now connected.");
+                    else
+                        Log.Error("[Party] Failed to connect to voice. Result was {Result}. (Lobby {LobbyId})", res, lobby.Id);
+                });
+            });
+
+            instance.Queue("SetLobbyActivity", SetAsActivity);
 
             instance.Queue("OpenNetwork", () =>
             {
-                Task.Delay(1000);
                 lobbyManager.ConnectNetwork(lobby.Id);
 
-                if (isCreating)
-                {
+                // Channel 0: reliable send to client
+                lobbyManager.OpenNetworkChannel(lobby.Id, 0, true);
 
-                    // Channel 0: reliable send to client
-                    lobbyManager.OpenNetworkChannel(lobby.Id, 0, true);
+                // Channel 1: unreliable send to client
+                lobbyManager.OpenNetworkChannel(lobby.Id, 1, false);
 
-                    // Channel 1: unreliable send to client
-                    lobbyManager.OpenNetworkChannel(lobby.Id, 1, false);
+                // Channel 2: reliable send to server
+                lobbyManager.OpenNetworkChannel(lobby.Id, 2, true);
 
-                    // Channel 2: reliable send to server
-                    lobbyManager.OpenNetworkChannel(lobby.Id, 2, true);
-
-                    // Channel 3: unreliable send/receive to server
-                    lobbyManager.OpenNetworkChannel(lobby.Id, 3, false);
-                }
+                // Channel 3: unreliable send/receive to server
+                lobbyManager.OpenNetworkChannel(lobby.Id, 3, false);
 
                 isNetworkConnected = true;
 
@@ -342,27 +281,12 @@ namespace MinecraftProximity
                         if (user.Id == Program.currentUserId)
                             continue;
 
-                        // DEBUG NETWORK COMMENT ME OUT
-                        //SendNetworkJson(user.Id, 2, helloMsg);
+                        SendNetworkJson(user.Id, 2, helloMsg);
                     };
-
-
-                    instance.Queue("ConnectVoice", async () =>
-                    {
-                        await lobbyManager.ConnectVoice(lobby.Id).ContinueWith(async res =>
-                        {
-                            if (await res == Discord.Result.Ok)
-                                Log.Information("[Party] Voice chat is now connected.");
-                            else
-                                Log.Error("[Party] Failed to connect to voice. Result was {Result}. (Lobby {LobbyId})", res, lobby.Id);
-
-                            instance.Queue("SetLobbyActivity", SetAsActivity);
-                        });
-                    });
-                    return Task.CompletedTask;
+                    return null;
                 });
 
-                return Task.CompletedTask;
+                return null;
             });
 
             //lobbyManager.OnLobbyMessage += (lobbyID, userID, data) =>

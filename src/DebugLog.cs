@@ -6,7 +6,7 @@ using Serilog;
 
 namespace MinecraftProximity
 {
-    static class NetworkLog
+    static class DebugLog
     {
         public enum Operation
         {
@@ -37,7 +37,28 @@ namespace MinecraftProximity
             SEND_MESSAGE,
             RECEIVE_MESSAGE,
             USER_CONNECT,
-            USER_DISCONNECT
+            USER_DISCONNECT,
+
+            //
+
+            MEMBER_COUNT,
+            GET_MEMBER_USER,
+            CONNECT_VOICE,
+            DISCONNECT_VOICE,
+            GET_LOBBY_ACTIVITY_SECRET,
+
+            ON_LOBBY_UPDATE,
+            ON_MEMBER_UPDATE,
+            GET_LOBBY_METADATA_COUNT,
+            GET_LOBBY_METADATA_VALUE,
+            UPDATE_MEMBER,
+            UPDATED_MEMBER,
+
+            GET_CURRENT_USER,
+            ON_ACTIVITY_JOIN,
+            UPDATE_ACTIVITY,
+            UPDATED_ACTIVITY,
+            REGISTER_COMMAND
         }
 
         [Flags]
@@ -108,7 +129,7 @@ namespace MinecraftProximity
             string path = "";
             for (int i = 0; i < 5000; i++)
             {
-                path = $"networkDump{i}.txt";
+                path = $"debugLogDump{i}.txt";
                 if (!File.Exists(path))
                     break;
             }

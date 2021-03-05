@@ -73,6 +73,11 @@ namespace MinecraftProximity.DiscordAsync
         {
             try
             {
+                DebugLog.Log(new DebugLog.Entry
+                {
+                    op = DebugLog.Operation.ON_ACTIVITY_JOIN
+                });
+
                 OnActivityJoin?.Invoke(secret);
             }
             catch (Exception ex)
@@ -89,8 +94,18 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
+                    DebugLog.Log(new DebugLog.Entry
+                    {
+                        op = DebugLog.Operation.UPDATE_ACTIVITY
+                    });
+
                     internalActivityManager.UpdateActivity(activity, result =>
                     {
+                        DebugLog.Log(new DebugLog.Entry
+                        {
+                            op = DebugLog.Operation.UPDATED_ACTIVITY
+                        });
+
                         taskCompletionSource.TrySetResult(result);
                     });
                 },
@@ -105,6 +120,11 @@ namespace MinecraftProximity.DiscordAsync
             {
                 action = () =>
                 {
+                    DebugLog.Log(new DebugLog.Entry
+                    {
+                        op = DebugLog.Operation.REGISTER_COMMAND
+                    });
+
                     internalActivityManager.RegisterCommand(command);
                 }
             });

@@ -153,10 +153,16 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
         return
 
     def log_error(self, *args):
-        if "An established connection was aborted by the software in your host machine" in args[0]:
-            print(f"[WebUI] A HTTP connection was broken.")
-        else:
-            super().log_error(*args)
+        try:
+            for arg in args:
+                if type(arg) != str:
+                    continue
+                if "An established connection was aborted by the software in your host machine" in arg:
+                    print(f"[WebUI] A HTTP connection was broken.")
+                    return
+        except Exception as e:
+            pass
+        super().log_error(*args)
 
 
 def do_httpd():

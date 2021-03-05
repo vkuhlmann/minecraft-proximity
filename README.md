@@ -1,5 +1,5 @@
 # Minecraft Proximity
-**An advanced proximity chat for Minecraft.**
+**A flexible proximity chat solution for Minecraft.**
 
 This application reads your Minecraft coordinates from the screen (use HUD from Vanilla Tweaks or provisionally the F3 screen).
 Then, it uses the Discord Game API to set the volumes of you and your party. And then: have fun!

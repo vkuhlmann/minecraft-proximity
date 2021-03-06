@@ -5,49 +5,49 @@ import json
 
 
 class Obscuration:
-    def __init__(self, lowCorner, highCorner, transmissionCoeff):
-        self.transmissionCoeff = transmissionCoeff
-        self.lowCorner = lowCorner
-        self.highCorner = highCorner
+    def __init__(self, low_corner, high_corner, transmission_coeff):
+        self.transmission_coeff = transmission_coeff
+        self.low_corner = low_corner
+        self.high_corner = high_corner
 
-    def getFactor(self, rayFrom, rayTo):
-        rayFrom = np.copy(rayFrom)
-        rayTo = np.copy(rayTo)
+    def get_factor(self, ray_from, ray_to):
+        ray_from = np.copy(ray_from)
+        ray_to = np.copy(ray_to)
 
-        lowRay = rayFrom
-        highRay = rayTo
-        if rayFrom[0] > rayTo[0]:
-            lowRay = rayTo
-            highRay = rayFrom
+        low_ray = ray_from
+        high_ray = ray_to
+        if ray_from[0] > ray_to[0]:
+            low_ray = ray_to
+            high_ray = ray_from
 
-        if highRay[0] < self.lowCorner[0] or lowRay[0] > self.highCorner[0]:
+        if high_ray[0] < self.low_corner[0] or low_ray[0] > self.high_corner[0]:
             return 1.0
 
-        if lowRay[0] < self.lowCorner[0]:
-            lowRay += (self.lowCorner[0] - lowRay[0]) / (highRay[0] - lowRay[0])\
-                * (highRay - lowRay)
-        if highRay[0] > self.highCorner[0]:
-            highRay += (self.highCorner[0] - highRay[0]) / (highRay[0] - lowRay[0])\
-                * (highRay - lowRay)
+        if low_ray[0] < self.low_corner[0]:
+            low_ray += (self.low_corner[0] - low_ray[0]) / (high_ray[0] - low_ray[0])\
+                * (high_ray - low_ray)
+        if high_ray[0] > self.high_corner[0]:
+            high_ray += (self.high_corner[0] - high_ray[0]) / (high_ray[0] - low_ray[0])\
+                * (high_ray - low_ray)
 
-        if lowRay[2] > highRay[2]:
-            swap = lowRay
-            lowRay = highRay
-            highRay = swap
+        if low_ray[2] > high_ray[2]:
+            swap = low_ray
+            low_ray = high_ray
+            high_ray = swap
 
-        if highRay[2] < self.lowCorner[2] or lowRay[2] > self.highCorner[2]:
+        if high_ray[2] < self.low_corner[2] or low_ray[2] > self.high_corner[2]:
             return 1.0
 
-        if lowRay[2] < self.lowCorner[2]:
-            lowRay += (self.lowCorner[2] - lowRay[2]) / (highRay[2] - lowRay[2])\
-                * (highRay - lowRay)
-        if highRay[2] > self.highCorner[2]:
-            highRay += (self.highCorner[2] - highRay[2]) / (highRay[2] - lowRay[2])\
-                * (highRay - lowRay)
+        if low_ray[2] < self.low_corner[2]:
+            low_ray += (self.low_corner[2] - low_ray[2]) / (high_ray[2] - low_ray[2])\
+                * (high_ray - low_ray)
+        if high_ray[2] > self.high_corner[2]:
+            high_ray += (self.high_corner[2] - high_ray[2]) / (high_ray[2] - low_ray[2])\
+                * (high_ray - low_ray)
 
-        highRay[1] = lowRay[1]
-        dist = np.linalg.norm(highRay - lowRay)
-        factor = np.exp(np.log(self.transmissionCoeff) * dist)
+        high_ray[1] = low_ray[1]
+        dist = np.linalg.norm(high_ray - low_ray)
+        factor = np.exp(np.log(self.transmission_coeff) * dist)
         return factor
 
 # Do the setup. The returned object needs to implement a number of methods.
@@ -85,17 +85,15 @@ class LogicServer:
         self.obscurations = [Obscuration(
             np.array([92, 56, -59]),
             np.array([93, 58, -53]),
-            transmissionCoeff=0.1)]
+            transmission_coeff=0.1)]
 
-        self.prevBase = None
         self.allow_updatemap_remote = True
         self.players = []
         self.map = None
         self.params = {
-            "proximityEnabled": True
+            "proximityEnabled": True,
+            "halvingDistance": 10
         }
-
-        #self.positions = {}
 
     # Return one of:
     #   False: the command was not handled (unknown command)
@@ -108,7 +106,7 @@ class LogicServer:
             "updatemap": self.on_updatemap,
             "webui": self.on_webui,
             "sendmap": self.on_sendmap,
-            "setParams": self.on_setparams
+            "setparams": self.on_setparams
         }
         if msgType in resolve:
             return resolve[msgType](msg, sender)
@@ -129,13 +127,8 @@ class LogicServer:
                 continue
             self.params[key] = msg["data"][key]
 
-        broadcastMessage = {
-            "type": "paramsUpdated",
-            "data": self.params
-        }
-
         self.broadcast({
-            "type": "paramsUpdated",
+            "type": "paramsupdated",
             "data": self.params
         })
 
@@ -188,7 +181,7 @@ class LogicServer:
                 self.obscurations.append(Obscuration(
                     np.array([x, 0, y]),
                     np.array([x + 1, 255, y + 1]),
-                    transmissionCoeff=coeff
+                    transmission_coeff=coeff
                 ))
         # for obsc in self.obscurations:
         #     print(f"{obsc.lowCorner}, {obsc.highCorner}, {obsc.transmissionCoeff}")
@@ -218,19 +211,19 @@ class LogicServer:
     #   True (or None): the command was handled
     #   a str: output to print
     #
-    def handle_command(self, cmdName, args):
+    def handle_command(self, cmd_name, args):
         commands = {
             "hi": self.handle_hi
         }
 
-        if cmdName in commands:
+        if cmd_name in commands:
             reply = []
 
             def outp(line):
                 nonlocal reply
                 reply += [line]
 
-            commands[cmdName](args, outp)
+            commands[cmd_name](args, outp)
             if len(reply) > 0:
                 ans = "\n".join(reply)
                 return ans
@@ -250,22 +243,16 @@ class LogicServer:
         if not self.params["proximityEnabled"]:
             return 1.0
 
-        basePos = base.pos
-        othPos = oth.pos
+        base_pos = base.pos
+        oth_pos = oth.pos
 
-        # if base.discordUsername not in self.positions:
-        #     self.positions[base.discordUsername] = np.array([0, 0, 0])
-
-        # if basePos is not None:
-        #     self.positions[base.discordUsername] = basePos
-
-        if basePos is None or othPos is None:
+        if base_pos is None or oth_pos is None:
             return 1.0
-        dist = np.linalg.norm(basePos - othPos)
-        halvingDistance = 10
+        dist = np.linalg.norm(base_pos - oth_pos)
+        halving_distance = self.params["halvingDistance"]
 
         factor = 1.0
         for obsc in self.obscurations:
-            factor *= obsc.getFactor(othPos, basePos)
+            factor *= obsc.get_factor(oth_pos, base_pos)
 
-        return max(1.0 - (dist / halvingDistance)**2 / 2, 0.0) * factor
+        return max(1.0 - (dist / halving_distance)**2 / 2, 0.0) * factor

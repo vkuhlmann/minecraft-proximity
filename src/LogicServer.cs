@@ -12,6 +12,7 @@ using Python.Runtime;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 namespace MinecraftProximity
 {
@@ -106,17 +107,39 @@ namespace MinecraftProximity
             {
                 try
                 {
-                    scope = Py.CreateScope();
-                    IEnumerable<string> imports = new List<string> { "json", "logicserver" };
-                    Dictionary<string, dynamic> modules = new Dictionary<string, dynamic>();
+                    try
+                    {
+                        scope = Py.CreateScope();
+                        IEnumerable<string> imports = new List<string> { "json", "logicserver" };
+                        Dictionary<string, dynamic> modules = new Dictionary<string, dynamic>();
 
-                    foreach (string import in imports)
-                        modules[import] = scope.Import(import);
+                        foreach (string import in imports)
+                            modules[import] = scope.Import(import);
 
-                    jsonModule = modules["json"];
+                        jsonModule = modules["json"];
 
-                    dynamic mod = modules["logicserver"];
-                    logicServerPy = mod.create_server(sendMessageHandler);
+                        dynamic mod = modules["logicserver"];
+                        logicServerPy = mod.create_server(sendMessageHandler);
+                    }
+                    catch (PythonException ex)
+                    {
+                        Regex regex = new Regex("^\\['(?<pythonStacktrace>[^\\n]*)'\\]\\s*at Python\\.");
+                        string stackTrace = ex.StackTrace;
+                        Match m = regex.Match(stackTrace);
+                        if (!m.Success)
+                            throw ex;
+                        stackTrace = m.Groups["pythonStacktrace"].Value;
+
+                        stackTrace = Regex.Replace(stackTrace, "(?<!\\\\)(?<precedings>(\\\\\\\\)*)\\\\n',\\s*'", "${precedings}\n");
+                        stackTrace = Regex.Replace(stackTrace, "(?<!\\\\)(?<precedings>(\\\\\\\\)*)\\\\n", "${precedings}\n  ");
+                        stackTrace = stackTrace.Replace("\r", "");
+                        string[] stackTraceLines = stackTrace.Split('\n');
+
+                        Log.Error("[Server] Error initializing Python code:");
+                        Log.Error("[Server > Error] {Message}", ex.Message);
+                        foreach (string l in stackTraceLines)
+                            Log.Error($"[Server > Error] {l}");
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -326,7 +349,7 @@ namespace MinecraftProximity
                 }
                 break;
 
-                case "updateCoords":
+                case "updatecoords":
                 {
                     long userId = jObject["userId"].Value<long>();
                     if (playersMap.TryGetValue(userId, out ServerPlayer pl))
@@ -474,7 +497,7 @@ namespace MinecraftProximity
 
             JObject data = JObject.FromObject(new
             {
-                type = "changeServer",
+                type = "changeserver",
                 userId = Program.currentUserId
             });
             foreach (ServerPlayer pl in playersMap.Values)
@@ -520,7 +543,7 @@ namespace MinecraftProximity
 
             JObject data = JObject.FromObject(new
             {
-                type = "setVolumes",
+                type = "setvolumes",
                 players = playersData
             });
 

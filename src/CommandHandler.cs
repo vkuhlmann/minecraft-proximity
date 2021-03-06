@@ -10,6 +10,39 @@ namespace MinecraftProximity
 {
     class CommandHandler
     {
+        readonly CancellationTokenSource cancelExecLoopSource;
+        readonly CancellationToken cancelExecLoop;
+
+        Task execLoop;
+
+        public CommandHandler()
+        {
+            cancelExecLoopSource = new CancellationTokenSource();
+            cancelExecLoop = cancelExecLoopSource.Token;
+
+            execLoop = null;
+        }
+
+        public void StartLoop()
+        {
+            execLoop = Task.Run(() => DoHandleLoop(cancelExecLoop));
+        }
+
+        public void StopLoop()
+        {
+            Program.isQuitting = true;
+            cancelExecLoopSource?.Cancel();
+
+            try
+            {
+                execLoop?.Wait();
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Execution loop ended with error: {Error}\n{Stacktrace}", ex.Message, ex.StackTrace);
+            }
+        }
+
         public static async Task DoHandleLoop(CancellationToken cancTok)
         {
             while (!Program.isQuitting)

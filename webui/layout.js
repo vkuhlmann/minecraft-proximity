@@ -4,16 +4,6 @@ $(function () {
     onDOMReady();
 });
 
-// const pixelart =
-// "..........\n" +
-// "..x....x..\n" +
-// "..........\n" +
-// "..........\n" +
-// "..........\n" +
-// "..x....x..\n" +
-// "..xxxxxx..\n" +
-// "..........\n";
-
 let pixelartText =
     "........\n" +
     ".x....x.\n" +
@@ -135,10 +125,6 @@ function onDOMReady() {
     //     }
     // }, 200);
 }
-
-// function resetSplitterWidth() {
-
-// }
 
 function setupSplitter() {
     let el = $("#splitter")[0];

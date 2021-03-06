@@ -188,7 +188,7 @@ namespace MinecraftProximity
         {
             string type = data["type"].Value<string>();
 
-            if (type == "setVolume")
+            if (type == "setvolume")
             {
                 //await SetLocalVolume(data["userId"].Value<long>(), data["volume"].Value<float>());
                 long userId = data["userId"].Value<long>();
@@ -199,7 +199,7 @@ namespace MinecraftProximity
                 if (players.TryGetValue(userId, out Player pl))
                     pl.SetLocalVolume(volume);
             }
-            else if (type == "setVolumes")
+            else if (type == "setvolumes")
             {
                 //Log.Information("Setting volumes! {Data}", data["players"].ToString());
 
@@ -217,7 +217,7 @@ namespace MinecraftProximity
                     }
                 }
             }
-            else if (type == "sendCoords")
+            else if (type == "sendcoords")
             {
                 Coords? coords = await coordsReader.GetCoords();
                 await SendCoordinates(coords);
@@ -233,7 +233,7 @@ namespace MinecraftProximity
             //    for (string line in lines) {
             //        Log.Information("[Chat]");
             //    }
-            else if (type == "broadcastReceive")
+            else if (type == "broadcastreceive")
             {
                 string message = data["message"].Value<string>();
                 message.Replace("\r", "");
@@ -242,7 +242,7 @@ namespace MinecraftProximity
                 foreach (string line in lines)
                     Log.Information("[Broadcast] {Message}", line);
             }
-            else if (type == "changeServer")
+            else if (type == "changeserver")
             {
                 long userId = data["userId"].Value<long>();
 
@@ -275,7 +275,7 @@ namespace MinecraftProximity
                 if (webUI != null)
                     webUI.HandleMessage(data["data"].Value<JObject>());
             }
-            else if (type == "updatemap" || type == "updateplayers" || type == "paramsUpdated")
+            else if (type == "updatemap" || type == "updateplayers" || type == "paramsupdated")
             {
                 WebUI webUI = instance.webUI;
                 if (webUI != null)
@@ -304,7 +304,7 @@ namespace MinecraftProximity
 
             JObject message = JObject.FromObject(new
             {
-                type = "updateCoords",
+                type = "updatecoords",
                 userId = ownUserId,
                 this.coords.x,
                 this.coords.y,

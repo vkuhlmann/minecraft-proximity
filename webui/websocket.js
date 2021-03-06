@@ -44,7 +44,7 @@ function setupMap() {
 
 function enableGlobalProximity() {
     socket.send(JSON.stringify({
-        "type": "setParams",
+        "type": "setparams",
         "data": {
             "proximityEnabled": true
         }
@@ -53,7 +53,7 @@ function enableGlobalProximity() {
 
 function disableGlobalProximity() {
     socket.send(JSON.stringify({
-        "type": "setParams",
+        "type": "setparams",
         "data": {
             "proximityEnabled": false
         }
@@ -134,7 +134,7 @@ function handleMessage(json) {
             }
             break;
 
-        case "paramsUpdated":
+        case "paramsupdated":
             {
                 onParamsUpdated(json);
             }

@@ -384,7 +384,7 @@ namespace MinecraftProximity
             {
                 JObject payload = JObject.FromObject(new
                 {
-                    type = "broadcastReceive",
+                    type = "broadcastreceive",
                     message = message
                 });
 
